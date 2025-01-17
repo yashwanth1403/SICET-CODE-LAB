@@ -1,0 +1,127 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Student {
+  id            String       @id @default(cuid())
+  studentId     String       @unique // College provided ID
+  email         String?      @unique
+  name          String?
+  password      String
+  department    String
+  PhoneNumber   String?      @unique
+  semester      Int?
+  batch         String       // Graduation year
+  role          Role        @default(STUDENT)
+  isVerified    Boolean     @default(false)
+  isActive      Boolean     @default(true)
+  submissions   Submission[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([studentId])
+  @@index([email])
+}
+
+model Professor {
+  id            String       @id @default(cuid())
+  email         String      @unique
+  name          String
+  password      String
+  department    String
+  professorId   String      @unique
+  role          Role        @default(PROFESSOR)
+  problems      Problem[]    @relation("CreatedProblems")
+  isVerified    Boolean     @default(false)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([professorId])
+  @@index([email])
+}
+
+enum Role {
+  STUDENT
+  PROFESSOR
+  ADMIN
+}
+
+model Problem {
+  id           String       @id @default(cuid())
+  title        String
+  description  String
+  difficulty   Difficulty
+  timeLimit    Int         @default(2000) // Time limit in milliseconds
+  memoryLimit  Int         @default(512)  // Memory limit in MB
+  createdBy    Professor   @relation("CreatedProblems", fields: [professorId], references: [id])
+  professorId  String
+  testCases    TestCase[]
+  submissions  Submission[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  isActive     Boolean      @default(true)
+  tags         String[]     // Array of problem tags/categories
+
+  @@index([difficulty])
+  @@index([professorId])
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model TestCase {
+  id          String   @id @default(cuid())
+  input       String
+  output      String
+  explanation String?  // Optional explanation for the test case
+  isHidden    Boolean  @default(false)
+  problem     Problem  @relation(fields: [problemId], references: [id])
+  problemId   String
+  score       Int      @default(0)  // Points for this test case
+
+  @@index([problemId])
+}
+
+model Submission {
+  id          String   @id @default(cuid())
+  code        String   @db.Text
+  language    String
+  status      Status
+  score       Int
+  student     Student  @relation(fields: [studentId], references: [id])
+  studentId   String
+  problem     Problem  @relation(fields: [problemId], references: [id])
+  problemId   String
+  createdAt   DateTime @default(now())
+  executionTime Int?    // Time taken in milliseconds
+  memoryUsed   Int?    // Memory used in MB
+  errorMessage String?  // Store any compilation/runtime errors
+  testResults  Json?   // Store detailed test case results
+
+  @@index([studentId])
+  @@index([problemId])
+  @@index([status])
+}
+
+enum Status {
+  PENDING
+  RUNNING
+  COMPLETED
+  ERROR
+}
