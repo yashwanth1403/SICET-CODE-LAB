@@ -1,181 +1,344 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Plus,
-  Book,
-  Users,
-  Trophy,
+  Clock,
   Calendar,
-  ChevronDown,
-  Search,
+  Book,
+  Code,
+  Database,
+  ArrowRight,
+  X,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ProfessorDashboard = () => {
-  const [activeTab, setActiveTab] = useState("assessments");
-  const [client, setClient] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+  const [testCases, setTestCases] = useState([
+    { input: "", output: "", score: 0, isHidden: false },
+  ]);
+  const [assessment, setAssessment] = useState({
+    title: "",
+    description: "",
+    startTime: "",
+    endTime: "",
+    duration: 120,
+    totalQuestions: 1,
+    topics: [],
+    problems: [],
+  });
 
-  const stats = [
-    { title: "Total Assessments", value: "24", icon: Book },
-    { title: "Active Students", value: "156", icon: Users },
-    { title: "Avg. Score", value: "72%", icon: Trophy },
-    { title: "This Month", value: "8", icon: Calendar },
+  const steps = [
+    "Basic Details",
+    "Problems & Test Cases",
+    "Schedule",
+    "Review",
   ];
 
-  const recentAssessments = [
-    {
-      title: "Data Structures Mid-Term",
-      date: "2025-01-15",
-      submissions: 45,
-      avgScore: 76,
-    },
-    {
-      title: "Algorithms Quiz #3",
-      date: "2025-01-12",
-      submissions: 38,
-      avgScore: 82,
-    },
-    {
-      title: "Python Programming Basics",
-      date: "2025-01-10",
-      submissions: 52,
-      avgScore: 68,
-    },
-  ];
-  useEffect(() => {
-    setClient(true);
-  }, []);
-  if (!client) {
-    return <div>loading....</div>;
-  }
+  const addTestCase = () => {
+    setTestCases([
+      ...testCases,
+      { input: "", output: "", score: 0, isHidden: false },
+    ]);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-            Professor Dashboard
+            Create New Assessment
           </h1>
           <p className="text-gray-400 mt-2">
-            Manage your coding assessments and track student progress
+            Build your coding assessment in simple steps
           </p>
         </div>
-        <button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded-lg hover:opacity-90">
-          <Plus size={20} />
-          Create Assessment
-        </button>
-      </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.title} className="bg-gray-800 border-gray-700">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex justify-between">
+            {steps.map((step, index) => (
+              <div key={step} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    index <= activeStep
+                      ? "bg-gradient-to-r from-blue-500 to-cyan-500"
+                      : "bg-gray-700"
+                  } text-white`}
+                >
+                  {index + 1}
+                </div>
+                <div className="ml-2">
+                  <p
+                    className={`${
+                      index <= activeStep ? "text-white" : "text-gray-500"
+                    }`}
+                  >
+                    {step}
+                  </p>
+                </div>
+                {index < steps.length - 1 && (
+                  <div
+                    className={`w-24 h-0.5 mx-4 ${
+                      index < activeStep
+                        ? "bg-gradient-to-r from-blue-500 to-cyan-500"
+                        : "bg-gray-700"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="space-y-6">
+          {activeStep === 0 && (
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-white">Basic Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
                   <div>
-                    <p className="text-gray-400 text-sm">{stat.title}</p>
-                    <p className="text-2xl font-bold text-white mt-1">
-                      {stat.value}
-                    </p>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Assessment Title
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full bg-gray-700 border-gray-600 text-white rounded-lg p-2.5"
+                      placeholder="e.g., Data Structures Mid-Term"
+                      value={assessment.title}
+                      onChange={(e) =>
+                        setAssessment({ ...assessment, title: e.target.value })
+                      }
+                    />
                   </div>
-                  <Icon className="text-blue-500" size={24} />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      className="w-full bg-gray-700 border-gray-600 text-white rounded-lg p-2.5"
+                      rows={4}
+                      placeholder="Describe the assessment objectives and instructions..."
+                      value={assessment.description}
+                      onChange={(e) =>
+                        setAssessment({
+                          ...assessment,
+                          description: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Topics Covered
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full bg-gray-700 border-gray-600 text-white rounded-lg p-2.5"
+                      placeholder="e.g., Arrays, Dynamic Programming, Trees (comma separated)"
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          )}
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column */}
-        <div className="lg:col-span-2">
-          <Card className="bg-gray-800 border-gray-700">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">
-                  Recent Assessments
-                </h2>
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <Search
-                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      size={18}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Search assessments..."
-                      className="bg-gray-700 text-white pl-10 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <button className="flex items-center gap-2 bg-gray-700 text-white px-3 py-2 rounded-lg text-sm">
-                    Sort by <ChevronDown size={16} />
+          {activeStep === 1 && (
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-white flex justify-between items-center">
+                  <span>Problems & Test Cases</span>
+                  <button
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"
+                    onClick={addTestCase}
+                  >
+                    <Plus size={16} /> Add Problem
                   </button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="bg-gray-700 p-4 rounded-lg">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-white font-medium">Problem 1</h3>
+                      <div className="flex items-center gap-2">
+                        <select className="bg-gray-600 text-white rounded-lg px-3 py-1">
+                          <option>Easy</option>
+                          <option>Medium</option>
+                          <option>Hard</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        className="w-full bg-gray-600 text-white rounded-lg p-2.5"
+                        placeholder="Problem Title"
+                      />
+                      <textarea
+                        className="w-full bg-gray-600 text-white rounded-lg p-2.5"
+                        rows={4}
+                        placeholder="Problem Description"
+                      />
+
+                      {/* Test Cases */}
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <h4 className="text-white">Test Cases</h4>
+                          <button
+                            className="text-blue-400 text-sm flex items-center gap-1"
+                            onClick={addTestCase}
+                          >
+                            <Plus size={14} /> Add Test Case
+                          </button>
+                        </div>
+
+                        {testCases.map((testCase, index) => (
+                          <div
+                            key={index}
+                            className="bg-gray-800 p-4 rounded-lg"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <h5 className="text-white">
+                                Test Case {index + 1}
+                              </h5>
+                              <button className="text-gray-400 hover:text-white">
+                                <X size={16} />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm text-gray-400 mb-1">
+                                  Input
+                                </label>
+                                <textarea
+                                  className="w-full bg-gray-700 text-white rounded-lg p-2.5"
+                                  rows={3}
+                                  placeholder="Test case input"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-gray-400 mb-1">
+                                  Expected Output
+                                </label>
+                                <textarea
+                                  className="w-full bg-gray-700 text-white rounded-lg p-2.5"
+                                  rows={3}
+                                  placeholder="Expected output"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 mt-2">
+                              <input
+                                type="number"
+                                className="w-24 bg-gray-700 text-white rounded-lg p-2"
+                                placeholder="Score"
+                              />
+                              <label className="flex items-center gap-2 text-gray-400">
+                                <input
+                                  type="checkbox"
+                                  className="rounded bg-gray-700"
+                                />
+                                Hidden Test Case
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+          )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-gray-400 text-sm">
-                      <th className="text-left pb-4">Title</th>
-                      <th className="text-left pb-4">Date</th>
-                      <th className="text-left pb-4">Submissions</th>
-                      <th className="text-left pb-4">Avg. Score</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentAssessments.map((assessment) => (
-                      <tr
-                        key={assessment.title}
-                        className="border-t border-gray-700"
-                      >
-                        <td className="py-4 text-white">{assessment.title}</td>
-                        <td className="py-4 text-gray-400">
-                          {assessment.date}
-                        </td>
-                        <td className="py-4 text-gray-400">
-                          {assessment.submissions}
-                        </td>
-                        <td className="py-4">
-                          <span className="text-emerald-500">
-                            {assessment.avgScore}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </Card>
-        </div>
+          {activeStep === 2 && (
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-white">Schedule</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Start Time
+                    </label>
+                    <div className="relative">
+                      <Calendar
+                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                        size={18}
+                      />
+                      <input
+                        type="datetime-local"
+                        className="w-full bg-gray-700 border-gray-600 text-white rounded-lg pl-10 p-2.5"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      End Time
+                    </label>
+                    <div className="relative">
+                      <Calendar
+                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                        size={18}
+                      />
+                      <input
+                        type="datetime-local"
+                        className="w-full bg-gray-700 border-gray-600 text-white rounded-lg pl-10 p-2.5"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Duration (minutes)
+                    </label>
+                    <div className="relative">
+                      <Clock
+                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                        size={18}
+                      />
+                      <input
+                        type="number"
+                        className="w-full bg-gray-700 border-gray-600 text-white rounded-lg pl-10 p-2.5"
+                        placeholder="120"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Right Column */}
-        <div>
-          <Card className="bg-gray-800 border-gray-700">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold text-white mb-6">
-                Quick Actions
-              </h2>
-              <div className="space-y-4">
-                <button className="w-full bg-gray-700 text-white p-4 rounded-lg text-left hover:bg-gray-600">
-                  Create New Assessment
-                </button>
-                <button className="w-full bg-gray-700 text-white p-4 rounded-lg text-left hover:bg-gray-600">
-                  View Student Reports
-                </button>
-                <button className="w-full bg-gray-700 text-white p-4 rounded-lg text-left hover:bg-gray-600">
-                  Manage Question Bank
-                </button>
-                <button className="w-full bg-gray-700 text-white p-4 rounded-lg text-left hover:bg-gray-600">
-                  Review Submissions
-                </button>
-              </div>
-            </div>
-          </Card>
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-8">
+            <button
+              onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
+              className={`px-4 py-2 rounded-lg ${
+                activeStep === 0
+                  ? "bg-gray-700 text-gray-400"
+                  : "bg-gray-700 text-white hover:bg-gray-600"
+              }`}
+              disabled={activeStep === 0}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() =>
+                activeStep === steps.length - 1
+                  ? console.log("Submit")
+                  : setActiveStep(activeStep + 1)
+              }
+              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:opacity-90 flex items-center gap-2"
+            >
+              {activeStep === steps.length - 1 ? "Create Assessment" : "Next"}
+              <ArrowRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
