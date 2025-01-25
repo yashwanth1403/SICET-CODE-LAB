@@ -14,7 +14,6 @@ import {
   Menu,
   X,
   LogOut,
-  Sparkles,
   Terminal,
 } from "lucide-react";
 import SidebarSkeleton from "./sidebarSkeleton";

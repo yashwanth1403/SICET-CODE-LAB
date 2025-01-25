@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Code, FileText, Timer } from "lucide-react";
+import { Code, FileText, Timer } from "lucide-react";
 
 const Assessment = () => {
   return (

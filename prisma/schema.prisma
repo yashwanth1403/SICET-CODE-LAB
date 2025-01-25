@@ -4,15 +4,14 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql" // or your database provider
   url      = env("DATABASE_URL")
 }
 
+generator client {
+  provider = "prisma-client-js"
+}
 
 model Student {
   id            String       @id @default(cuid())
@@ -37,15 +36,16 @@ model Student {
 
 model Professor {
   id            String       @id @default(cuid())
-  email         String      @unique
+  email         String       @unique
   name          String
   password      String
   department    String
-  professorId   String      @unique
-  role          Role        @default(PROFESSOR)
-  problems      Problem[]    @relation("CreatedProblems")
-  isVerified    Boolean     @default(false)
-  isActive      Boolean     @default(true)
+  professorId   String       @unique
+  role          Role         @default(PROFESSOR)
+  problems      Problems[]   
+  assessments   Assessments[]
+  isVerified    Boolean      @default(false)
+  isActive      Boolean      @default(true)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -59,69 +59,98 @@ enum Role {
   ADMIN
 }
 
-model Problem {
-  id           String       @id @default(cuid())
+enum DifficultyLevel {
+  Easy
+  Medium 
+  Hard
+}
+
+enum AssessmentStatus {
+  DRAFT
+  PUBLISHED
+  ONGOING
+  COMPLETED
+  ARCHIVED
+}
+
+model Problems {
+  id           String          @id @default(cuid())
   title        String
-  description  String
-  difficulty   Difficulty
-  timeLimit    Int         @default(2000) // Time limit in milliseconds
-  memoryLimit  Int         @default(512)  // Memory limit in MB
-  createdBy    Professor   @relation("CreatedProblems", fields: [professorId], references: [id])
+  description  String         @db.Text
+  difficulty   DifficultyLevel
+  assessment   Assessments     @relation(fields: [assessmentId], references: [id])
+  assessmentId String
+  professor    Professor       @relation(fields: [professorId], references: [id])
   professorId  String
-  testCases    TestCase[]
-  submissions  Submission[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  isActive     Boolean      @default(true)
-  tags         String[]     // Array of problem tags/categories
+  testCases    TestCases[]
+  submissions  Submission[]    // Add this relation
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
-  @@index([difficulty])
+  @@index([assessmentId])
   @@index([professorId])
-}
-
-enum Difficulty {
-  EASY
-  MEDIUM
-  HARD
-}
-
-model TestCase {
-  id          String   @id @default(cuid())
-  input       String
-  output      String
-  explanation String?  // Optional explanation for the test case
-  isHidden    Boolean  @default(false)
-  problem     Problem  @relation(fields: [problemId], references: [id])
-  problemId   String
-  score       Int      @default(0)  // Points for this test case
-
-  @@index([problemId])
+  @@index([difficulty])
 }
 
 model Submission {
-  id          String   @id @default(cuid())
-  code        String   @db.Text
-  language    String
-  status      Status
-  score       Int
-  student     Student  @relation(fields: [studentId], references: [id])
-  studentId   String
-  problem     Problem  @relation(fields: [problemId], references: [id])
-  problemId   String
-  createdAt   DateTime @default(now())
-  executionTime Int?    // Time taken in milliseconds
-  memoryUsed   Int?    // Memory used in MB
-  errorMessage String?  // Store any compilation/runtime errors
-  testResults  Json?   // Store detailed test case results
+  id            String    @id @default(cuid())
+  code          String    @db.Text
+  language      String
+  status        Status
+  score         Int
+  student       Student   @relation(fields: [studentId], references: [id])
+  studentId     String
+  problem       Problems  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  problemId     String
+  createdAt     DateTime  @default(now())
+  executionTime Int?      // Time taken in milliseconds
+  memoryUsed    Int?      // Memory used in MB
+  errorMessage  String?   // Store any compilation/runtime errors
+  testResults   Json?     // Store detailed test case results
 
   @@index([studentId])
   @@index([problemId])
   @@index([status])
 }
-
 enum Status {
   PENDING
   RUNNING
   COMPLETED
+  FAILED
   ERROR
+}
+
+model Assessments {
+  id             String           @id @default(cuid())
+  title          String
+  year           String
+  departments    String[]
+  startTime      DateTime
+  endTime        DateTime
+  duration       Int
+  totalQuestions Int
+  topics         String[]
+  status         AssessmentStatus @default(DRAFT)
+  problems       Problems[]
+  professor      Professor        @relation(fields: [professorId], references: [id])
+  professorId    String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([professorId])
+  @@index([status])
+}
+
+model TestCases {
+  id         String    @id @default(cuid())
+  input      String    @db.Text
+  output     String    @db.Text
+  score      Int
+  isHidden   Boolean
+  problem    Problems  @relation(fields: [problemId], references: [id])
+  problemId  String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now())
+
+  @@index([problemId])
 }

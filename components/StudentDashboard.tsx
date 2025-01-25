@@ -3,7 +3,6 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, BookOpen, CheckCircle, Calendar } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { Spotlight } from "./ui/spotlight";
 
 const StudentDashboard = () => {
   const { data: session, status } = useSession();
