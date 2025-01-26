@@ -19,7 +19,7 @@ interface Problem {
 
 interface CreateAssessmentParams {
   title: string;
-  year: string;
+  batch: string;
   departments: string[];
   startTime: string;
   endTime: string;
@@ -56,7 +56,7 @@ export async function createAssessmentHandler(params: CreateAssessmentParams) {
     const newAssessment = await prisma.assessments.create({
       data: {
         title: params.title,
-        year: params.year,
+        batch: params.batch,
         departments: params.departments,
         startTime: new Date(params.startTime),
         endTime: new Date(params.endTime),

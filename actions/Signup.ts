@@ -18,7 +18,7 @@ const SignupformInputs = z
     rollNoPrefix: z.string().nonempty("Roll number prefix is required"),
     rollNoSuffix: z
       .string()
-      .regex(/^\d{2}$/, "Suffix must be 2 digits")
+      .regex(/^[A-Za-z0-9]{2}$/, "Suffix must be 2 digits")
       .nonempty("Roll number suffix is required"),
     email: z
       .string()

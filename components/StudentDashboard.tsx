@@ -1,11 +1,16 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, BookOpen, CheckCircle, Calendar } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 const StudentDashboard = () => {
+  const [isClient, setIsClient] = useState(false);
   const { data: session, status } = useSession();
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const metrics = {
     totalAssessments: 12,
@@ -34,6 +39,26 @@ const StudentDashboard = () => {
     },
   ];
 
+  // Loading state
+  if (status === "loading" || !isClient) {
+    return (
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6 bg-gray-900 min-h-screen text-gray-100 flex items-center justify-center">
+        <p className="text-gray-400">Loading...</p>
+      </div>
+    );
+  }
+
+  // No session state
+  if (!session) {
+    return (
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6 bg-gray-900 min-h-screen text-gray-100 flex items-center justify-center">
+        <p className="text-gray-400">Please log in</p>
+      </div>
+    );
+  }
+
+  console.log(session);
+
   return (
     <div>
       <div className="p-4 md:p-6 space-y-4 md:space-y-6 bg-gray-900 min-h-screen text-gray-100 pt-16 md:pt-6">
@@ -61,26 +86,26 @@ const StudentDashboard = () => {
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-gray-300 flex flex-col sm:flex-row sm:items-center sm:space-x-2">
             <span>Welcome back,</span>
             <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-              {session?.user?.name}
+              {session.user?.name || "Student"}
             </span>
           </h1>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-2">
             <p className="text-sm md:text-base text-gray-400">
               Student ID:{" "}
               <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                {session?.user?.collegeId}
+                {session.user?.collegeId || "N/A"}
               </span>
             </p>
             <p className="text-sm md:text-base text-gray-400">
               Batch:{" "}
               <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                2023-2027
+                {session.user?.batch || "N/A"}
               </span>
             </p>
             <p className="text-sm md:text-base text-gray-400">
               Branch:{" "}
               <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                Computer Science
+                {session.user?.department || "N/A"}
               </span>
             </p>
           </div>

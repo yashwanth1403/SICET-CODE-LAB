@@ -123,24 +123,23 @@ enum Status {
 model Assessments {
   id             String           @id @default(cuid())
   title          String
-  year           String
+  batch          String[]         // Changed from year to batch
   departments    String[]
   startTime      DateTime
   endTime        DateTime
   duration       Int
   totalQuestions Int
-  topics         String[]
-  status         AssessmentStatus @default(DRAFT)
-  problems       Problems[]
-  professor      Professor        @relation(fields: [professorId], references: [id])
-  professorId    String
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  topics        String[]
+  status        AssessmentStatus @default(DRAFT)
+  problems      Problems[]
+  professor     Professor        @relation(fields: [professorId], references: [id])
+  professorId   String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
+  @@index([batch])
   @@index([professorId])
-  @@index([status])
 }
-
 model TestCases {
   id         String    @id @default(cuid())
   input      String    @db.Text

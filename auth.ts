@@ -14,6 +14,8 @@ declare module "next-auth" {
       collegeId: string;
       contact: string;
       role: UserRole;
+      batch?: string;
+      department?: string;
     } & DefaultSession["user"];
   }
 
@@ -21,12 +23,16 @@ declare module "next-auth" {
     collegeId: string;
     contact: string;
     role: UserRole;
+    batch?: string;
+    department?: string;
   }
 
   interface JWT extends DefaultJWT {
     collegeId: string;
     contact: string;
     role: UserRole;
+    batch?: string;
+    department?: string;
   }
 }
 
@@ -38,6 +44,8 @@ interface AuthUser {
   collegeId: string;
   contact: string;
   role: UserRole;
+  batch?: string;
+  department?: string;
 }
 
 const AUTH_ERRORS = {
@@ -59,6 +67,8 @@ const userFetchers = {
         name: true,
         password: true,
         email: true,
+        batch: true,
+        department: true,
       },
     });
 
@@ -74,6 +84,8 @@ const userFetchers = {
       collegeId: user.studentId,
       contact: user.email,
       role: "student" as const,
+      batch: user.batch,
+      department: user.department,
     };
   },
 
@@ -165,6 +177,7 @@ export const authConfig: NextAuthConfig = {
           if (!isValidPassword) {
             throw new Error(AUTH_ERRORS.INVALID_CREDENTIALS);
           }
+          console.log(fetchUser);
 
           return fetchUser;
         } catch (error) {
@@ -185,6 +198,8 @@ export const authConfig: NextAuthConfig = {
           collegeId: user.collegeId,
           contact: user.contact,
           role: user.role,
+          batch: user.batch,
+          department: user.department,
         };
       }
       return token;
@@ -197,6 +212,8 @@ export const authConfig: NextAuthConfig = {
           collegeId: token.collegeId as string,
           contact: token.contact as string,
           role: token.role as UserRole,
+          batch: token.batch as string,
+          department: token.department as string,
         },
       } as Session;
     },

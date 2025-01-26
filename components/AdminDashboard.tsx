@@ -125,7 +125,7 @@ interface NavigationButtonsProps {
 
 interface Assessment {
   title: string;
-  year: string;
+  batch: string;
   departments: string[];
   startTime: string;
   endTime: string;
@@ -145,6 +145,8 @@ const DEPARTMENTS = [
   "Data Science",
   "Cybersecurity",
 ];
+
+const BATCH_OPTIONS = ["2022-2026", "2023-2027", "2024-2028"];
 
 // Basic Details Component
 const BasicDetails: React.FC<BasicDetailsProps> = ({
@@ -184,25 +186,24 @@ const BasicDetails: React.FC<BasicDetailsProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Select Year
+              Select Batch
             </label>
             <select
-              className={`w-full bg-gray-700 text-white rounded-lg p-2.5 ${
-                errors.year ? "border-red-500" : ""
-              }`}
-              value={assessment.year}
+              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2.5"
+              value={assessment.batch}
               onChange={(e) =>
-                setAssessment({ ...assessment, year: e.target.value })
+                setAssessment({ ...assessment, batch: e.target.value })
               }
             >
-              <option value="">Select Year</option>
-              <option value="1st">1st Year</option>
-              <option value="2nd">2nd Year</option>
-              <option value="3rd">3rd Year</option>
-              <option value="4th">4th Year</option>
+              <option value="">Select a batch</option>
+              {BATCH_OPTIONS.map((batch) => (
+                <option key={batch} value={batch}>
+                  {batch}
+                </option>
+              ))}
             </select>
-            {errors.year && (
-              <p className="text-red-500 text-sm mt-1">{errors.year}</p>
+            {errors.batch && (
+              <p className="text-red-500 text-sm mt-1">{errors.batch}</p>
             )}
           </div>
 
@@ -729,8 +730,7 @@ const Review: React.FC<ReviewProps> = ({ assessment }) => {
                 <span className="text-gray-400">Title:</span> {assessment.title}
               </p>
               <p>
-                <span className="text-gray-400">Description:</span>{" "}
-                {assessment.year}
+                <span className="text-gray-400">Batch:</span> {assessment.batch}
               </p>
               <p>
                 <span className="text-gray-400">Topics:</span>{" "}
@@ -865,7 +865,7 @@ const CreateAssessment: React.FC = () => {
   const [isClient, SetIsClient] = useState<boolean>(false);
   const [assessment, setAssessment] = useState<Assessment>({
     title: "",
-    year: "",
+    batch: "",
     departments: [],
     startTime: "",
     endTime: "",
@@ -902,7 +902,7 @@ const CreateAssessment: React.FC = () => {
 
     if (step === 0) {
       if (!assessment.title.trim()) newErrors.title = "Title is required";
-      if (!assessment.year) newErrors.year = "Year is required";
+      if (!assessment.batch) newErrors.batch = "batch is required";
       if (assessment.departments.length === 0)
         newErrors.departments = "Select at least one department";
     } else if (step === 1) {
@@ -949,7 +949,7 @@ const CreateAssessment: React.FC = () => {
         console.log("Submit assessment:", assessment);
         const createAssessmentResult = await createAssessmentHandler({
           title: assessment.title,
-          year: assessment.year,
+          batch: assessment.batch,
           departments: assessment.departments,
           startTime: assessment.startTime,
           endTime: assessment.endTime,
