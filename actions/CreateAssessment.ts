@@ -19,7 +19,7 @@ interface Problem {
 
 interface CreateAssessmentParams {
   title: string;
-  batch: string;
+  batches: string[];
   departments: string[];
   startTime: string;
   endTime: string;
@@ -56,7 +56,7 @@ export async function createAssessmentHandler(params: CreateAssessmentParams) {
     const newAssessment = await prisma.assessments.create({
       data: {
         title: params.title,
-        batch: params.batch,
+        batch: params.batches,
         departments: params.departments,
         startTime: new Date(params.startTime),
         endTime: new Date(params.endTime),
@@ -64,7 +64,7 @@ export async function createAssessmentHandler(params: CreateAssessmentParams) {
         totalQuestions: params.totalQuestions,
         topics: params.topics,
         status: AssessmentStatus.DRAFT,
-        professorId: params.professorId,
+        professorId: "cm6keu1e00002uxm45o8fwbpi",
       },
     });
 
@@ -76,7 +76,7 @@ export async function createAssessmentHandler(params: CreateAssessmentParams) {
           description: problem.description,
           difficulty: problem.difficulty,
           assessmentId: newAssessment.id,
-          professorId: params.professorId,
+          professorId: "cm6keu1e00002uxm45o8fwbpi",
           testCases: {
             create: problem.testCases.map((tc) => ({
               input: tc.input,

@@ -136,6 +136,7 @@ export const authConfig: NextAuthConfig = {
       async authorize(credentials) {
         try {
           const { id, password, role } = credentials as Record<string, string>;
+          console.log(credentials);
 
           if (!id || !password || !role) {
             throw new Error(AUTH_ERRORS.MISSING_CREDENTIALS);
@@ -144,11 +145,10 @@ export const authConfig: NextAuthConfig = {
           if (role !== "student" && role !== "admin") {
             throw new Error(AUTH_ERRORS.INVALID_CREDENTIALS);
           }
-
-          const fetchUser =
-            role === "student"
-              ? userFetchers.student(id)
-              : userFetchers.admin(id);
+          const fetchUser = await (role === "student"
+            ? userFetchers.student(id)
+            : userFetchers.admin(id));
+          console.log(typeof fetchUser);
 
           if (!fetchUser) {
             throw new Error(
@@ -168,6 +168,7 @@ export const authConfig: NextAuthConfig = {
                   where: { professorId: id },
                   select: { password: true },
                 });
+          console.log(dbUser);
 
           if (!dbUser?.password) {
             throw new Error(AUTH_ERRORS.MISSING_USER_DATA);
@@ -181,7 +182,7 @@ export const authConfig: NextAuthConfig = {
 
           return fetchUser;
         } catch (error) {
-          console.error("Auth error:", error);
+          console.error("Auth error:", error.stack);
           throw error;
         }
       },

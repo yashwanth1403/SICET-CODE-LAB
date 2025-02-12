@@ -51,6 +51,8 @@ export async function signup(data: SignupFormData) {
         where: { studentId: studentId },
       });
 
+      console.log(existingStudent);
+
       if (existingStudent) {
         return {
           success: false,
@@ -77,6 +79,7 @@ export async function signup(data: SignupFormData) {
         },
       });
 
+      console.log(student);
       return {
         success: true,
         message: "Your account is successfully created 🚀",
@@ -99,7 +102,9 @@ export async function signup(data: SignupFormData) {
         error: error.errors[0].message,
       };
     }
-    console.error(error);
+
+    // Fixed error handling
+    console.error("Signup error:", error);
     return {
       success: false,
       error: "Something went wrong. Please try again.",

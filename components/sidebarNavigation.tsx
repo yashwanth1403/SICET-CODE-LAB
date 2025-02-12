@@ -1,10 +1,9 @@
+"use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useSession, signIn, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Code,
-  GraduationCap,
   Clock,
   Trophy,
   Settings,
@@ -16,42 +15,23 @@ import {
   LogOut,
   Terminal,
 } from "lucide-react";
-import SidebarSkeleton from "./sidebarSkeleton";
+import { redirect } from "next/navigation";
 
-const SidebarNavigation = ({ userRole = "student", onNavigate }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+const SidebarNavigation = ({ session, isLoading = false }) => {
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const { data: session, status } = useSession();
 
-  // if (status === "loading") {
-  //   return (
-  //     <div>
-  //       <SidebarSkeleton />
-  //     </div>
-  //   );
-  // }
+  const navItems = [
+    { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+    { title: "Problems", icon: Code, href: "/problems" },
+    { title: "Assessments", icon: BookOpen, href: "/assessments" },
+    { title: "Submissions", icon: Clock, href: "/submissions" },
+    { title: "Progress", icon: LineChart, href: "/progress" },
+    { title: "Leaderboard", icon: Trophy, href: "/leaderboard" },
+  ];
 
-  const navItems =
-    userRole === "student"
-      ? [
-          { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-          { title: "Problems", icon: Code, href: "/problems" },
-          { title: "Assessments", icon: BookOpen, href: "/assessments" },
-          { title: "Submissions", icon: Clock, href: "/submissions" },
-          { title: "Progress", icon: LineChart, href: "/progress" },
-          { title: "Leaderboard", icon: Trophy, href: "/leaderboard" },
-        ]
-      : [
-          { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-          { title: "Problem Bank", icon: Code, href: "/problem-bank" },
-          { title: "Students", icon: Users, href: "/students" },
-          { title: "Assessments", icon: GraduationCap, href: "/assessments" },
-          { title: "Analytics", icon: LineChart, href: "/analytics" },
-        ];
-
-  const handleNavClick = (href) => {
-    onNavigate(href);
-    setIsMobileOpen(false);
+  const handleNavClick = (href: string) => {
+    redirect(href);
   };
 
   return (
@@ -123,7 +103,7 @@ const SidebarNavigation = ({ userRole = "student", onNavigate }) => {
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center ring-2 ring-emerald-500/30 shadow-lg">
                 <Users className="h-8 w-8 text-cyan-400" />
               </div>
-              {status === "loading" ? (
+              {isLoading ? (
                 <div className="space-y-2 w-full flex flex-col items-center">
                   <div className="h-6 w-32 bg-slate-700 rounded animate-pulse" />
                   <div className="h-5 w-24 bg-slate-700 rounded animate-pulse" />
@@ -134,7 +114,7 @@ const SidebarNavigation = ({ userRole = "student", onNavigate }) => {
                     {session?.user?.name}
                   </div>
                   <div className="text-md text-cyan-400 font-mono bg-slate-800/50 px-2 py-0.5 rounded-full">
-                    {`{${session?.user.collegeId}}`}
+                    {`{${session?.user?.collegeId}}`}
                   </div>
                 </div>
               )}

@@ -1,63 +1,67 @@
 "use client";
-import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, BookOpen, CheckCircle, Calendar } from "lucide-react";
-import { useSession } from "next-auth/react";
+import {
+  Clock,
+  BookOpen,
+  CheckCircle,
+  Calendar,
+  Target,
+  Layers,
+} from "lucide-react";
 
-const StudentDashboard = () => {
-  const [isClient, setIsClient] = useState(false);
-  const { data: session, status } = useSession();
+import { AssessmentStatus } from "@prisma/client";
+interface User {
+  name: string;
+  collegeId: string;
+  batch: string;
+  department: string;
+}
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+export interface Assessment {
+  id: string;
+  title: string;
+  batch: string[];
+  departments: string[];
+  startTime: string;
+  endTime: string;
+  duration: number;
+  totalQuestions: number;
+  topics: string[];
+  status: AssessmentStatus;
+}
 
+interface StudentDashboardProps {
+  user: User;
+  upcomingAssessments: Assessment[];
+}
+
+const StudentDashboard = ({
+  user,
+  upcomingAssessments,
+}: StudentDashboardProps) => {
+  console.log("Upcoming Assessments:", upcomingAssessments);
   const metrics = {
     totalAssessments: 12,
     timeSpent: "45h 30m",
     problemsSolved: 234,
   };
+  const formatDate = (isoString) => {
+    const date = new Date(isoString);
+    return date.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
-  const upcomingAssessments = [
-    {
-      id: 1,
-      title: "Mid-term Mathematics",
-      date: "Jan 20, 2025",
-      duration: "2 hours",
-    },
-    {
-      id: 2,
-      title: "Physics Quiz",
-      date: "Jan 22, 2025",
-      duration: "1 hour",
-    },
-    {
-      id: 3,
-      title: "Chemistry Lab Assessment",
-      date: "Jan 25, 2025",
-      duration: "3 hours",
-    },
-  ];
-
-  // Loading state
-  if (status === "loading" || !isClient) {
-    return (
-      <div className="p-4 md:p-6 space-y-4 md:space-y-6 bg-gray-900 min-h-screen text-gray-100 flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
-      </div>
-    );
-  }
-
-  // No session state
-  if (!session) {
-    return (
-      <div className="p-4 md:p-6 space-y-4 md:space-y-6 bg-gray-900 min-h-screen text-gray-100 flex items-center justify-center">
-        <p className="text-gray-400">Please log in</p>
-      </div>
-    );
-  }
-
-  console.log(session);
+  const formatTime = (isoString) => {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
 
   return (
     <div>
@@ -86,26 +90,26 @@ const StudentDashboard = () => {
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-gray-300 flex flex-col sm:flex-row sm:items-center sm:space-x-2">
             <span>Welcome back,</span>
             <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-              {session.user?.name || "Student"}
+              {user?.name || "Student"}
             </span>
           </h1>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-2">
             <p className="text-sm md:text-base text-gray-400">
               Student ID:{" "}
               <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                {session.user?.collegeId || "N/A"}
+                {user?.collegeId || "N/A"}
               </span>
             </p>
             <p className="text-sm md:text-base text-gray-400">
               Batch:{" "}
               <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                {session.user?.batch || "N/A"}
+                {user?.batch || "N/A"}
               </span>
             </p>
             <p className="text-sm md:text-base text-gray-400">
               Branch:{" "}
               <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                {session.user?.department || "N/A"}
+                {user?.department || "N/A"}
               </span>
             </p>
           </div>
@@ -163,31 +167,104 @@ const StudentDashboard = () => {
         </div>
 
         {/* Upcoming Assessments Section */}
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader className="pb-2 md:pb-4">
-            <CardTitle className="flex items-center space-x-2 text-lg md:text-xl bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-              <Calendar className="h-4 w-4 md:h-5 md:w-5" />
-              <span>Upcoming Assessments</span>
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl font-bold">
+              <BookOpen className="h-5 w-5 text-blue-500" />
+              <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
+                Upcoming Assessments
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 md:space-y-4">
+            <div className="space-y-4">
               {upcomingAssessments.map((assessment) => (
                 <div
                   key={assessment.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 border border-gray-700 rounded-lg bg-gray-850 hover:bg-gray-750 transition-colors space-y-2 sm:space-y-0"
+                  className="rounded-xl border border-gray-800 bg-gray-800/50 p-4 hover:bg-gray-800/70 transition-all"
                 >
-                  <div>
-                    <h4 className="text-sm md:text-base font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                      {assessment.title}
-                    </h4>
-                    <p className="text-xs md:text-sm text-gray-400">
-                      {assessment.date}
-                    </p>
+                  <div className="flex flex-col space-y-4">
+                    {/* Header with Title and Departments */}
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-semibold text-white">
+                          {assessment.title}
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {assessment.departments.map((dept) => (
+                            <span
+                              key={dept}
+                              className="px-2 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                            >
+                              {dept}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-700/50 text-gray-300 self-start">
+                        {assessment.status}
+                      </span>
+                    </div>
+
+                    {/* Time Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Window Opens */}
+                      <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
+                        <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                          <Calendar className="h-4 w-4 text-green-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Window Opens</p>
+                          <p className="text-sm font-medium text-white">
+                            {formatDate(assessment.startTime)}
+                            <span className="text-gray-400"> at </span>
+                            {formatTime(assessment.startTime)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Window Closes */}
+                      <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
+                        <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                          <Clock className="h-4 w-4 text-red-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Window Closes</p>
+                          <p className="text-sm font-medium text-white">
+                            {formatDate(assessment.endTime)}
+                            <span className="text-gray-400"> at </span>
+                            {formatTime(assessment.endTime)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Duration */}
+                      <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
+                        <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                          <Target className="h-4 w-4 text-purple-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Time Allowed</p>
+                          <p className="text-sm font-medium text-white">
+                            {assessment.duration} minutes
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Topics */}
+                    <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
+                      <div className="h-8 w-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                        <Layers className="h-4 w-4 text-yellow-500" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-400">Topics Covered</p>
+                        <p className="text-sm font-medium text-white">
+                          {assessment.topics.join(", ")}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-xs md:text-sm bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                    {assessment.duration}
-                  </span>
                 </div>
               ))}
             </div>
