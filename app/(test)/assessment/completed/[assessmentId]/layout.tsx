@@ -6,7 +6,7 @@ interface LayoutProps {
   params: { assessmentId: string };
 }
 
-export default function Layout({ children, params }: LayoutProps) {
+export default function Layout({ children }: LayoutProps) {
   return (
     <div className="flex flex-col min-h-screen bg-[#0a0f1a]">
       <Toaster />
