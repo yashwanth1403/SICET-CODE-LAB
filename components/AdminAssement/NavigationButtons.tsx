@@ -25,7 +25,10 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
         Previous
       </button>
       <button
-        onClick={handleNext}
+        onClick={() => {
+          console.log("Next button clicked for step:", activeStep);
+          handleNext();
+        }}
         className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:opacity-90 flex items-center gap-2"
       >
         {activeStep === steps.length - 1 ? "Create Assessment" : "Next"}

@@ -7,7 +7,11 @@ const Login = async () => {
   const session = await auth();
 
   if (session) {
-    redirect("/dashboard");
+    if (session.user.role === "admin") {
+      redirect("/admin/create-assessment");
+    } else {
+      redirect("/dashboard");
+    }
   }
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 w-full">

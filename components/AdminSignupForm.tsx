@@ -234,7 +234,10 @@ const AdminSignupForm = () => {
               name="department"
               control={control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || "select_department"}
+                >
                   <SelectTrigger className="bg-slate-900 border-slate-700 text-slate-200">
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
@@ -269,7 +272,10 @@ const AdminSignupForm = () => {
               name="subject"
               control={control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || "select_subject"}
+                >
                   <SelectTrigger className="bg-slate-900 border-slate-700 text-slate-200">
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>

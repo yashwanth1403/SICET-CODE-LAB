@@ -7,9 +7,14 @@ import {
   Calendar,
   Target,
   Layers,
+  CalendarX,
+  Sun,
+  Sunset,
+  Moon,
 } from "lucide-react";
-
+import { useState, useEffect } from "react";
 import { AssessmentStatus } from "@prisma/client";
+
 interface User {
   name: string;
   collegeId: string;
@@ -35,15 +40,47 @@ interface StudentDashboardProps {
   upcomingAssessments: Assessment[];
 }
 
+const TimeBasedGreeting = ({ name }) => {
+  const [greeting, setGreeting] = useState("");
+
+  useEffect(() => {
+    const updateGreeting = () => {
+      const currentHour = new Date().getHours();
+
+      if (currentHour >= 5 && currentHour < 12) {
+        setGreeting("Good Morning");
+      } else if (currentHour >= 12 && currentHour < 18) {
+        setGreeting("Good Afternoon");
+      } else {
+        setGreeting("Good Evening");
+      }
+    };
+
+    updateGreeting();
+    // Update greeting every minute in case user is active during time change
+    const interval = setInterval(updateGreeting, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex items-center space-x-2">
+      <span className="tracking-wide">{greeting},</span>
+      <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent tracking-wide">
+        {name || "Student"}
+      </span>
+    </div>
+  );
+};
+
 const StudentDashboard = ({
   user,
   upcomingAssessments,
 }: StudentDashboardProps) => {
-  console.log("Upcoming Assessments:", upcomingAssessments);
   const metrics = {
-    totalAssessments: 12,
-    timeSpent: "45h 30m",
-    problemsSolved: 234,
+    totalAssessments: "N/A",
+    timeSpent: "N/A",
+    problemsSolved: "N/A",
   };
   const formatDate = (isoString) => {
     const date = new Date(isoString);
@@ -85,13 +122,10 @@ const StudentDashboard = ({
           </div>
         </div>
 
-        {/* Welcome Section */}
+        {/* Dynamic Greeting Section */}
         <div className="space-y-1 md:space-y-2">
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-gray-300 flex flex-col sm:flex-row sm:items-center sm:space-x-2">
-            <span>Welcome back,</span>
-            <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-              {user?.name || "Student"}
-            </span>
+            <TimeBasedGreeting name={user?.name} />
           </h1>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-2">
             <p className="text-sm md:text-base text-gray-400">
@@ -177,97 +211,120 @@ const StudentDashboard = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {upcomingAssessments.map((assessment) => (
-                <div
-                  key={assessment.id}
-                  className="rounded-xl border border-gray-800 bg-gray-800/50 p-4 hover:bg-gray-800/70 transition-all"
-                >
-                  <div className="flex flex-col space-y-4">
-                    {/* Header with Title and Departments */}
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-semibold text-white">
-                          {assessment.title}
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                          {assessment.departments.map((dept) => (
-                            <span
-                              key={dept}
-                              className="px-2 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                            >
-                              {dept}
-                            </span>
-                          ))}
+            {upcomingAssessments && upcomingAssessments.length > 0 ? (
+              <div className="space-y-4">
+                {upcomingAssessments.map((assessment) => (
+                  <div
+                    key={assessment.id}
+                    className="rounded-xl border border-gray-800 bg-gray-800/50 p-4 hover:bg-gray-800/70 transition-all"
+                  >
+                    <div className="flex flex-col space-y-4">
+                      {/* Header with Title and Departments */}
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="space-y-2">
+                          <h3 className="text-lg font-semibold text-white">
+                            {assessment.title}
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {assessment.departments.map((dept) => (
+                              <span
+                                key={dept}
+                                className="px-2 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                              >
+                                {dept}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-700/50 text-gray-300 self-start">
+                          {assessment.status}
+                        </span>
+                      </div>
+
+                      {/* Time Information */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Window Opens */}
+                        <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
+                          <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                            <Calendar className="h-4 w-4 text-green-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400">
+                              Window Opens
+                            </p>
+                            <p className="text-sm font-medium text-white">
+                              {formatDate(assessment.startTime)}
+                              <span className="text-gray-400"> at </span>
+                              {formatTime(assessment.startTime)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Window Closes */}
+                        <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
+                          <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                            <Clock className="h-4 w-4 text-red-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400">
+                              Window Closes
+                            </p>
+                            <p className="text-sm font-medium text-white">
+                              {formatDate(assessment.endTime)}
+                              <span className="text-gray-400"> at </span>
+                              {formatTime(assessment.endTime)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Duration */}
+                        <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
+                          <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                            <Target className="h-4 w-4 text-purple-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400">
+                              Time Allowed
+                            </p>
+                            <p className="text-sm font-medium text-white">
+                              {assessment.duration} minutes
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-700/50 text-gray-300 self-start">
-                        {assessment.status}
-                      </span>
-                    </div>
 
-                    {/* Time Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Window Opens */}
+                      {/* Topics */}
                       <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
-                        <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-                          <Calendar className="h-4 w-4 text-green-500" />
+                        <div className="h-8 w-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                          <Layers className="h-4 w-4 text-yellow-500" />
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Window Opens</p>
+                        <div className="flex-1">
+                          <p className="text-xs text-gray-400">
+                            Topics Covered
+                          </p>
                           <p className="text-sm font-medium text-white">
-                            {formatDate(assessment.startTime)}
-                            <span className="text-gray-400"> at </span>
-                            {formatTime(assessment.startTime)}
+                            {assessment.topics.join(", ")}
                           </p>
                         </div>
-                      </div>
-
-                      {/* Window Closes */}
-                      <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
-                        <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                          <Clock className="h-4 w-4 text-red-500" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Window Closes</p>
-                          <p className="text-sm font-medium text-white">
-                            {formatDate(assessment.endTime)}
-                            <span className="text-gray-400"> at </span>
-                            {formatTime(assessment.endTime)}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Duration */}
-                      <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
-                        <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                          <Target className="h-4 w-4 text-purple-500" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Time Allowed</p>
-                          <p className="text-sm font-medium text-white">
-                            {assessment.duration} minutes
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Topics */}
-                    <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
-                      <div className="h-8 w-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                        <Layers className="h-4 w-4 text-yellow-500" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-xs text-gray-400">Topics Covered</p>
-                        <p className="text-sm font-medium text-white">
-                          {assessment.topics.join(", ")}
-                        </p>
                       </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                <div className="h-16 w-16 mb-4 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <CalendarX className="h-8 w-8 text-blue-400" />
                 </div>
-              ))}
-            </div>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  No Upcoming Assessments
+                </h3>
+                <p className="text-gray-400 max-w-md">
+                  You're all caught up! There are no scheduled assessments at
+                  the moment. Enjoy your break and check back later for updates.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -63,6 +63,7 @@ const userFetchers = {
     const user = await prisma.student.findFirst({
       where: { studentId: id },
       select: {
+        id: true,
         studentId: true,
         name: true,
         password: true,
@@ -72,14 +73,12 @@ const userFetchers = {
       },
     });
 
-    console.log(user);
-
     if (!user?.name || !user?.email) {
       return null;
     }
 
     return {
-      id: user.studentId,
+      id: user.id,
       name: user.name,
       collegeId: user.studentId,
       contact: user.email,
@@ -136,7 +135,6 @@ export const authConfig: NextAuthConfig = {
       async authorize(credentials) {
         try {
           const { id, password, role } = credentials as Record<string, string>;
-          console.log(credentials);
 
           if (!id || !password || !role) {
             throw new Error(AUTH_ERRORS.MISSING_CREDENTIALS);
@@ -148,7 +146,6 @@ export const authConfig: NextAuthConfig = {
           const fetchUser = await (role === "student"
             ? userFetchers.student(id)
             : userFetchers.admin(id));
-          console.log(typeof fetchUser);
 
           if (!fetchUser) {
             throw new Error(
@@ -168,7 +165,6 @@ export const authConfig: NextAuthConfig = {
                   where: { professorId: id },
                   select: { password: true },
                 });
-          console.log(dbUser);
 
           if (!dbUser?.password) {
             throw new Error(AUTH_ERRORS.MISSING_USER_DATA);
@@ -178,11 +174,9 @@ export const authConfig: NextAuthConfig = {
           if (!isValidPassword) {
             throw new Error(AUTH_ERRORS.INVALID_CREDENTIALS);
           }
-          console.log(fetchUser);
 
           return fetchUser;
         } catch (error) {
-          console.error("Auth error:", error.stack);
           throw error;
         }
       },
@@ -196,6 +190,7 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         return {
           ...token,
+          id: user.id,
           collegeId: user.collegeId,
           contact: user.contact,
           role: user.role,
@@ -210,6 +205,7 @@ export const authConfig: NextAuthConfig = {
         ...session,
         user: {
           ...session.user,
+          id: token.id as string,
           collegeId: token.collegeId as string,
           contact: token.contact as string,
           role: token.role as UserRole,

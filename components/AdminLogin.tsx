@@ -54,7 +54,7 @@ const AdminLoginForm = () => {
       console.log("Form submitted:", data);
       const result = await loginHandler({ role: "admin", data: data });
       if (result == true) {
-        router.push("admin/dashboard");
+        router.push("/admin/create-assessment");
       } else {
         console.log(result);
         toast.error(result, {

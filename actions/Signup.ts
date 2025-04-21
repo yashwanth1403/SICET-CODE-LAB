@@ -41,7 +41,6 @@ const SignupformInputs = z
 export async function signup(data: SignupFormData) {
   try {
     // Validate input
-    console.log(data);
     const validatedData = SignupformInputs.safeParse(data);
     if (validatedData.success) {
       const { rollNoPrefix, rollNoSuffix } = data;

@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import {
   ClipboardList,
   RefreshCw,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 
 const formatDate = (isoString) => {
   const date = new Date(isoString);
@@ -30,6 +32,9 @@ const formatTime = (isoString) => {
 };
 
 const Assessment = ({ OngoingAssessments }) => {
+  async function handleStartAssement(assessmentId) {
+    redirect(`assessment/ongoing/${assessmentId}`);
+  }
   return (
     <div className="min-h-screen bg-gray-900 p-4">
       <div className="max-w-5xl mx-auto space-y-4">
@@ -175,7 +180,10 @@ const Assessment = ({ OngoingAssessments }) => {
                           </div>
                         </div>
                       </div>
-                      <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white h-9 text-sm">
+                      <Button
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white h-9 text-sm"
+                        onClick={() => handleStartAssement(assessment.id)}
+                      >
                         Start Assessment
                       </Button>
                     </div>
