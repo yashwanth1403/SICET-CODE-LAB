@@ -9,11 +9,11 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="flex flex-col min-h-screen bg-[#0a0f1a]">
-      <Toaster />
-      <AssessmentProvider>
+    <AssessmentProvider>
+      <div className="flex flex-col min-h-screen bg-[#0a0f1a]">
+        <Toaster />
         <main className="flex-grow">{children}</main>
-      </AssessmentProvider>
-    </div>
+      </div>
+    </AssessmentProvider>
   );
 }

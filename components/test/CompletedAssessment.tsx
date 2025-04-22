@@ -7,19 +7,7 @@ import {
 } from "@/lib/store/atom/testAssessment";
 import { Clock, Code, Trophy, Home } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/router";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatTime } from "@/lib/utils";
-import { fetcher } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -689,6 +677,16 @@ export const CompletedAssessment: React.FC<CompletedAssessmentProps> = ({
                               )?.text || "Unknown option"}
                             </div>
                           )}
+                          {/* Show correct answer if the user's answer was incorrect */}
+                          {submission.isCorrect === false &&
+                            problem.choices && (
+                              <div className="mt-1 text-xs text-green-400">
+                                Correct answer:{" "}
+                                {problem.choices.find(
+                                  (choice) => choice.isCorrect
+                                )?.text || "Unknown"}
+                              </div>
+                            )}
                         </div>
                       )
                     ) : (
@@ -930,39 +928,56 @@ export const CompletedAssessment: React.FC<CompletedAssessmentProps> = ({
                                     className={`flex items-start p-3 rounded-md ${
                                       submission.selectedChoiceId ===
                                         choice.id && choice.isCorrect
-                                        ? "bg-green-900/20 border border-green-800/40"
+                                        ? "bg-green-900/30 border border-green-800/60"
                                         : submission.selectedChoiceId ===
                                             choice.id && !choice.isCorrect
-                                        ? "bg-red-900/20 border border-red-800/40"
+                                        ? "bg-red-900/30 border border-red-800/60"
                                         : choice.isCorrect
-                                        ? "bg-green-900/10 border border-green-800/20"
-                                        : "bg-gray-800/20 border border-gray-700/30"
+                                        ? "bg-green-900/10 border border-green-800/30"
+                                        : "bg-gray-800/30 border border-gray-700/30"
                                     }`}
                                   >
                                     <div className="mr-3 mt-0.5">
                                       {submission.selectedChoiceId ===
                                       choice.id ? (
-                                        <div className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center">
+                                        <div
+                                          className={`h-4 w-4 rounded-full flex items-center justify-center ${
+                                            choice.isCorrect
+                                              ? "bg-green-500"
+                                              : "bg-red-500"
+                                          }`}
+                                        >
                                           <div className="h-1.5 w-1.5 rounded-full bg-white"></div>
                                         </div>
+                                      ) : choice.isCorrect ? (
+                                        <div className="h-4 w-4 rounded-full border-2 border-green-500"></div>
                                       ) : (
                                         <div className="h-4 w-4 rounded-full border border-gray-600"></div>
                                       )}
                                     </div>
                                     <div className="flex-1">
-                                      <div className="text-sm text-gray-200">
+                                      <div
+                                        className={`text-sm ${
+                                          choice.isCorrect
+                                            ? "text-green-300"
+                                            : submission.selectedChoiceId ===
+                                              choice.id
+                                            ? "text-red-300"
+                                            : "text-gray-200"
+                                        }`}
+                                      >
                                         {choice.text}
                                       </div>
                                     </div>
                                     {choice.isCorrect && (
-                                      <div className="ml-2 text-green-400 text-xs uppercase font-semibold bg-green-900/30 rounded px-2 py-1">
-                                        Correct
+                                      <div className="ml-2 text-green-400 text-xs uppercase font-semibold bg-green-900/40 rounded px-2 py-1">
+                                        Correct Answer
                                       </div>
                                     )}
                                     {submission.selectedChoiceId ===
                                       choice.id &&
                                       !choice.isCorrect && (
-                                        <div className="ml-2 text-red-400 text-xs uppercase font-semibold bg-red-900/30 rounded px-2 py-1">
+                                        <div className="ml-2 text-red-400 text-xs uppercase font-semibold bg-red-900/40 rounded px-2 py-1">
                                           Your Selection
                                         </div>
                                       )}
