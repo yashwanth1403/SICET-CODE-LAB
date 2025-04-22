@@ -89,12 +89,54 @@ const TestSidebar = () => {
     async (isTimeExpired = false) => {
       if (!assessment?.id || isSubmitting) return;
 
-      // Error handling without logging
       setIsSubmitting(true);
 
+      // Function to save all unsaved work before submission
+      const saveAllUnfinishedWork = () => {
+        try {
+          // Save any coding submissions that might not be saved yet
+          assessment.problems.forEach((problem) => {
+            if (problem.questionType === "CODING") {
+              const storageKey = `assessment_code_${assessment.id}_${problem.id}`;
+              const savedData = localStorage.getItem(storageKey);
+
+              if (savedData) {
+                // Get the latest code from localStorage
+                const submission = JSON.parse(savedData);
+
+                // If we have code but no test results, run an auto-save to the server
+                if (
+                  submission.code &&
+                  (!submission.results || submission.results.status === "ERROR")
+                ) {
+                  // Attempt to save this to the server
+                  fetch("/api/submissions/problem", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      problemId: problem.id,
+                      assessmentId: assessment.id,
+                      code: submission.code,
+                      language: submission.language,
+                      isAutoSave: true,
+                    }),
+                  }).catch(() => {
+                    /* Silent fail - we're trying our best to save */
+                  });
+                }
+              }
+            }
+          });
+        } catch {
+          // Silent fail - this is a best-effort save
+        }
+      };
+
       try {
+        // First save any unsaved work
+        saveAllUnfinishedWork();
+
         if (isTimeExpired) {
-          // Error handling without logging
           alert("Time's up! Your assessment will be submitted automatically.");
         }
 
@@ -116,8 +158,8 @@ const TestSidebar = () => {
         }
 
         // Successfully submitted
-        await response.json();
-        // Error handling without logging
+        const result = await response.json();
+        console.log("Assessment submitted successfully:", result);
 
         // Get attempt info from localStorage
         const storedAttemptKey = `assessment_attempt_${assessment.id}`;
@@ -130,6 +172,9 @@ const TestSidebar = () => {
             ...attemptInfo,
             isCompleted: true,
             submittedAt: new Date().toISOString(),
+            submissionId: result.data?.id || null,
+            score: result.data?.totalScore || 0,
+            maxScore: result.data?.maxScore || 0,
           };
           localStorage.setItem(
             storedAttemptKey,
@@ -142,17 +187,50 @@ const TestSidebar = () => {
 
         // Navigate to the completion page
         router.push(`/assessment/completed/${assessment.id}`);
-      } catch {
-        // Error handling without logging
+      } catch (error) {
+        console.error("Error submitting assessment:", error);
         alert(
           "There was an error submitting your assessment. Please try again."
         );
+
+        // If submission failed, try again with a different approach
+        if (isTimeExpired) {
+          // For time expiry, we need to make sure data is saved
+          try {
+            // Make one final attempt to save all data
+            saveAllUnfinishedWork();
+
+            // Even if the main submission failed, update local storage
+            const storedAttemptKey = `assessment_attempt_${assessment.id}`;
+            const storedAttempt = localStorage.getItem(storedAttemptKey);
+
+            if (storedAttempt) {
+              const attemptInfo = JSON.parse(storedAttempt);
+              const updatedAttemptInfo = {
+                ...attemptInfo,
+                isCompleted: true,
+                submittedAt: new Date().toISOString(),
+                wasError: true,
+              };
+              localStorage.setItem(
+                storedAttemptKey,
+                JSON.stringify(updatedAttemptInfo)
+              );
+            }
+
+            // Still try to navigate away
+            router.push(`/assessment/completed/${assessment.id}`);
+          } catch {
+            // Final fallback - if everything else failed, just go to completed page
+            router.push(`/assessment/completed/${assessment.id}`);
+          }
+        }
       } finally {
         setIsSubmitting(false);
         setShowConfirmation(false);
       }
     },
-    [assessment?.id, isSubmitting, router, clearLocalStorageExceptAttemptInfo]
+    [assessment, isSubmitting, router, clearLocalStorageExceptAttemptInfo]
   );
 
   // Initialize and update timer based on attempt data
@@ -174,9 +252,11 @@ const TestSidebar = () => {
     }
 
     if (!attemptInfo) {
-      // Error handling without logging
       return;
     }
+
+    // Flag to prevent multiple auto-submissions
+    let hasTriggeredAutoSubmit = false;
 
     // Calculate time remaining
     const updateTimeRemaining = () => {
@@ -197,9 +277,34 @@ const TestSidebar = () => {
       setTimeRemaining(remainingSecs);
       setProgress(elapsedPercentage);
 
-      // Auto-submit when time expires
-      if (remainingSecs <= 0) {
+      // Auto-submit when time expires, but only once
+      if (remainingSecs <= 0 && !hasTriggeredAutoSubmit) {
+        hasTriggeredAutoSubmit = true;
+
+        // Create auto-submit indicator in localStorage
+        try {
+          localStorage.setItem(`assessment_timed_out_${assessment.id}`, "true");
+        } catch {}
+
+        // Trigger auto-submission
         handleTestSubmission(true);
+      }
+
+      // Early warning at 1 minute remaining
+      if (remainingSecs > 0 && remainingSecs <= 60 && !hasTriggeredAutoSubmit) {
+        // Show 1-minute warning
+        const warningKey = `assessment_warning_${assessment.id}`;
+        const hasShownWarning = localStorage.getItem(warningKey);
+
+        if (!hasShownWarning) {
+          // Set warning shown flag
+          localStorage.setItem(warningKey, "true");
+
+          // Show warning alert
+          alert(
+            "Warning: You have less than 1 minute remaining. Your assessment will be automatically submitted when time expires."
+          );
+        }
       }
     };
 
@@ -209,8 +314,46 @@ const TestSidebar = () => {
     // Update every second
     const timer = setInterval(updateTimeRemaining, 1000);
 
-    return () => clearInterval(timer);
-  }, [assessment?.id, handleTestSubmission]);
+    // Emergency auto-submit function (backup if first submission fails)
+    const emergencyAutoSubmit = () => {
+      const now = new Date();
+      const endTime = new Date(attemptInfo.endTime);
+
+      // Check if we're at least 5 seconds past the end time
+      if (now.getTime() > endTime.getTime() + 5000) {
+        // Check if we have auto-submit indicator
+        const hasTimedOut = localStorage.getItem(
+          `assessment_timed_out_${assessment.id}`
+        );
+
+        // Check if we have a completion indicator
+        const storedAttempt = localStorage.getItem(storedAttemptKey);
+        let isCompleted = false;
+
+        if (storedAttempt) {
+          try {
+            const attemptData = JSON.parse(storedAttempt);
+            isCompleted = !!attemptData.isCompleted;
+          } catch {}
+        }
+
+        // If timed out but not completed, try submission again
+        if (hasTimedOut && !isCompleted && !hasTriggeredAutoSubmit) {
+          hasTriggeredAutoSubmit = true;
+          handleTestSubmission(true);
+        }
+      }
+    };
+
+    // Check every 5 seconds as a backup to ensure submission happens
+    const emergencyTimer = setInterval(emergencyAutoSubmit, 5000);
+
+    // Clean up
+    return () => {
+      clearInterval(timer);
+      clearInterval(emergencyTimer);
+    };
+  }, [assessment, handleTestSubmission]);
 
   // Format time remaining as HH:MM:SS or MM:SS
   const formatTimeRemaining = () => {
@@ -783,6 +926,7 @@ const TestSidebar = () => {
               <button
                 onClick={() => setShowConfirmation(false)}
                 className="text-gray-400 hover:text-white transition-colors"
+                disabled={isSubmitting}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -794,19 +938,104 @@ const TestSidebar = () => {
                 you will not be able to make any further changes.
               </p>
 
-              <div className="bg-yellow-900/30 text-yellow-300 border border-yellow-800/50 rounded-md p-3 mb-2 flex items-start">
-                <AlertTriangle className="w-5 h-5 mt-0.5 mr-2 flex-shrink-0" />
-                <span className="text-sm">
-                  Please ensure you have saved all your answers before
-                  submitting. Unsaved work may be lost.
-                </span>
-              </div>
+              {/* Submission Status */}
+              <div className="space-y-3 mb-4">
+                <div className="bg-yellow-900/30 text-yellow-300 border border-yellow-800/50 rounded-md p-3 flex items-start">
+                  <AlertTriangle className="w-5 h-5 mt-0.5 mr-2 flex-shrink-0" />
+                  <span className="text-sm">
+                    Please ensure you have saved all your answers before
+                    submitting. Unsaved work may be lost.
+                  </span>
+                </div>
 
-              <div className="bg-blue-900/30 text-blue-300 border border-blue-800/50 rounded-md p-3 flex items-start">
-                <CheckCircle className="w-5 h-5 mt-0.5 mr-2 flex-shrink-0" />
-                <div className="text-sm">
-                  <p>Assessment: {assessment?.title || "Coding Test"}</p>
-                  <p>Elapsed Time: {Math.floor(progress)}% complete</p>
+                <div className="bg-blue-900/30 text-blue-300 border border-blue-800/50 rounded-md p-3 flex items-start">
+                  <CheckCircle className="w-5 h-5 mt-0.5 mr-2 flex-shrink-0" />
+                  <div className="text-sm space-y-1 w-full">
+                    <p>
+                      <strong>Assessment:</strong>{" "}
+                      {assessment?.title || "Coding Test"}
+                    </p>
+                    <p>
+                      <strong>Timer Status:</strong> {Math.floor(progress)}%
+                      complete
+                    </p>
+
+                    {/* Progress summary */}
+                    <div className="mt-2 pt-2 border-t border-blue-800/30">
+                      <p className="font-medium">Completion Status:</p>
+                      <div className="mt-1 flex flex-col gap-1.5">
+                        {(() => {
+                          // Calculate stats for this summary
+                          const codingProblems =
+                            assessment?.problems.filter(
+                              (p) => p.questionType === "CODING"
+                            ) || [];
+                          const mcqProblems =
+                            assessment?.problems.filter(
+                              (p) => p.questionType === "MULTIPLE_CHOICE"
+                            ) || [];
+
+                          // Count attempted problems
+                          let codingAttempted = 0;
+                          let mcqAttempted = 0;
+
+                          // Check coding problems
+                          codingProblems.forEach((problem) => {
+                            try {
+                              const storageKey = `assessment_code_${assessment?.id}_${problem.id}`;
+                              const savedData =
+                                localStorage.getItem(storageKey);
+                              if (savedData) {
+                                const submission = JSON.parse(savedData);
+                                if (submission.code) codingAttempted++;
+                              }
+                            } catch {}
+                          });
+
+                          // Check MCQ problems
+                          mcqProblems.forEach((problem) => {
+                            try {
+                              const storageKey = `assessment_mcq_${assessment?.id}_${problem.id}`;
+                              const savedData =
+                                localStorage.getItem(storageKey);
+                              if (savedData) {
+                                const submission = JSON.parse(savedData);
+                                if (submission.selectedChoiceId) mcqAttempted++;
+                              }
+                            } catch {}
+                          });
+
+                          return (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <span>Coding problems:</span>
+                                <span>
+                                  {codingAttempted}/{codingProblems.length}{" "}
+                                  attempted
+                                </span>
+                              </div>
+                              {mcqProblems.length > 0 && (
+                                <div className="flex justify-between items-center">
+                                  <span>MCQ problems:</span>
+                                  <span>
+                                    {mcqAttempted}/{mcqProblems.length}{" "}
+                                    attempted
+                                  </span>
+                                </div>
+                              )}
+                              <div className="flex justify-between items-center font-medium">
+                                <span>Total:</span>
+                                <span>
+                                  {codingAttempted + mcqAttempted}/
+                                  {assessment?.problems.length || 0} attempted
+                                </span>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -815,12 +1044,13 @@ const TestSidebar = () => {
               <button
                 onClick={() => setShowConfirmation(false)}
                 className="px-4 py-2 border border-gray-700 rounded-md text-gray-300 hover:bg-gray-800 transition-colors"
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleTestSubmission(false)}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-md shadow-md shadow-blue-900/10 transition-colors"
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-md shadow-md shadow-blue-900/10 transition-colors flex items-center justify-center min-w-[120px]"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
