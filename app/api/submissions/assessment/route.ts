@@ -59,12 +59,18 @@ export async function GET(req: Request) {
 // POST route to submit an assessment
 export async function POST(req: Request) {
   try {
+    console.log("Received assessment submission POST request");
+
+    // Parse request body
     const body = await req.json();
     const { assessmentId, isTimeExpired = false } = body;
+
+    console.log("Request body:", { assessmentId, isTimeExpired });
 
     // Get student ID from session for security
     const session = await auth();
     if (!session?.user?.id) {
+      console.log("Authentication failed - no user session");
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
@@ -72,9 +78,11 @@ export async function POST(req: Request) {
     }
 
     const studentId = session.user.id;
+    console.log("Authenticated user:", studentId);
 
     // Validate required fields
     if (!assessmentId) {
+      console.log("Missing assessmentId in request");
       return NextResponse.json(
         { error: "Assessment ID is required" },
         { status: 400 }
@@ -98,11 +106,14 @@ export async function POST(req: Request) {
     });
 
     if (!attemptExists) {
+      console.log("No attempt found for:", { studentId, assessmentId });
       return NextResponse.json(
         { error: "No attempt found for this assessment" },
         { status: 404 }
       );
     }
+
+    console.log("Attempt exists, proceeding with finalization");
 
     // Process the assessment submission using the server action
     const result = await finalizeAssessment(
@@ -111,13 +122,17 @@ export async function POST(req: Request) {
       isTimeExpired
     );
 
+    console.log("Finalization result:", result);
+
     if (!result.success) {
+      console.log("Finalization failed:", result.error);
       return NextResponse.json(
         { error: result.error || "Failed to process submission" },
         { status: 500 }
       );
     }
 
+    console.log("Assessment submission successful");
     return NextResponse.json({
       success: true,
       message: "Assessment submitted successfully",
