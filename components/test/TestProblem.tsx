@@ -1014,14 +1014,26 @@ const TestProblem = ({
 
   // Get the formatted time of last save
   const getLastSavedTime = () => {
-    if (!submission?.lastSaved) return null;
-
     try {
+      if (!submission?.lastSaved) return null;
       const lastSaved = new Date(submission.lastSaved);
       return lastSaved.toLocaleTimeString();
     } catch (e) {
       return null;
     }
+  };
+
+  // Helper function to calculate visible test case statistics
+  const getVisibleTestStats = () => {
+    if (!testResults || !testResults.cases) return { visible: 0, passed: 0 };
+
+    const visibleCases = testResults.cases.filter((tc) => !tc.isHidden);
+    const passedVisibleCases = visibleCases.filter((tc) => tc.passed);
+
+    return {
+      visible: visibleCases.length,
+      passed: passedVisibleCases.length,
+    };
   };
 
   // Clean up timeout on component unmount
@@ -1249,8 +1261,21 @@ const TestProblem = ({
                 {testResults.passed === testResults.total
                   ? `All ${testResults.total} test cases passed!`
                   : `${testResults.passed}/${testResults.total} test cases passed`}
+                {testResults.cases.some((tc) => tc.isHidden) &&
+                  ` (includes hidden test cases)`}
               </span>
             </div>
+
+            {/* Show visible test case summary if we have hidden test cases */}
+            {testResults.cases.some((tc) => tc.isHidden) && (
+              <div className="mb-4 text-sm text-gray-400">
+                <span>
+                  Showing {getVisibleTestStats().visible} visible test cases.
+                  {getVisibleTestStats().passed}/{getVisibleTestStats().visible}{" "}
+                  visible test cases passed.
+                </span>
+              </div>
+            )}
 
             {/* Filter out hidden test cases for display */}
             {testResults.cases
@@ -1367,9 +1392,11 @@ const TestProblem = ({
                     />
                   </svg>
                   <span>
-                    Some test cases are hidden and not displayed above. Your
-                    code is evaluated against all test cases, including hidden
-                    ones.
+                    <strong>Hidden Test Cases: </strong>
+                    {testResults.total - getVisibleTestStats().visible} test
+                    cases are hidden and not displayed above. Your code is
+                    evaluated against all test cases, including hidden ones. To
+                    pass the problem, your solution must pass all test cases.
                   </span>
                 </div>
               </div>
