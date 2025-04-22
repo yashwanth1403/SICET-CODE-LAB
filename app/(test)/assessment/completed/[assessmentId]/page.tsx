@@ -1,4 +1,4 @@
-import { fetchAssessmentById } from "@/actions/TestAssessment";
+import { fetchAssessmentCompleted } from "@/actions/TestAssessment";
 import { auth } from "@/auth";
 import { CompletedAssessment } from "@/components/test/CompletedAssessment";
 import { redirect } from "next/navigation";
@@ -31,7 +31,7 @@ export default async function CompletedAssessmentPage({ params }: PageParams) {
   const submissionCheck = await prisma.assessmentSubmission.findUnique({
     where: {
       studentId_assessmentId: {
-        studentId: userId,
+        studentId: userId ?? "",
         assessmentId: assessmentId,
       },
     },
@@ -52,7 +52,7 @@ export default async function CompletedAssessmentPage({ params }: PageParams) {
   }
 
   // Fetch the assessment data for this specific assessment
-  const assessmentData = await fetchAssessmentById(
+  const assessmentData = await fetchAssessmentCompleted(
     assessmentId,
     userBatch,
     userDepartment
@@ -65,7 +65,7 @@ export default async function CompletedAssessmentPage({ params }: PageParams) {
   return (
     <CompletedAssessment
       assessmentId={assessmentId}
-      studentId={userId}
+      studentId={userId ?? ""}
       initialData={assessmentData}
     />
   );
