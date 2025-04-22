@@ -40,13 +40,6 @@ const McqSection: React.FC<McqSectionProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
 
-  // Debug log component rendering
-  console.log("[MCQ] McqSection rendering with props:", {
-    assessmentId,
-    studentId,
-    mcqProblemsCount: mcqProblems?.length,
-  });
-
   // Load from localStorage and API
   useEffect(() => {
     const loadAnswers = async () => {
@@ -73,22 +66,13 @@ const McqSection: React.FC<McqSectionProps> = ({
                   (problem.question.length > 50 ? "..." : ""),
                 isSubmitted: false,
               };
-            } catch (e) {
-              console.error(
-                `[MCQ] Error parsing localStorage for problem ${problem.id}:`,
-                e
-              );
+            } catch {
+              // Error handling for localStorage parsing without logging
             }
           }
         });
 
-        console.log(
-          "[MCQ] Loaded selections from localStorage:",
-          Object.keys(storedAnswers).length
-        );
-
         // Then fetch submitted answers from API
-        console.log("[MCQ] Fetching existing submissions from API");
         const response = await fetch(
           `/api/submissions/assessment?assessmentId=${assessmentId}&studentId=${studentId}&type=MCQ`
         );
@@ -118,16 +102,11 @@ const McqSection: React.FC<McqSectionProps> = ({
           }
         );
 
-        console.log(
-          "[MCQ] Loaded submissions from API:",
-          data.submissions.length
-        );
-
         // Merge localStorage selections with API submissions (API takes precedence)
         const mergedAnswers = { ...storedAnswers, ...submittedAnswers };
         setAnswers(mergedAnswers);
-      } catch (error) {
-        console.error("[MCQ] Error loading answers:", error);
+      } catch {
+        // Error handling without logging
         toast.error("Failed to load your previous answers");
       } finally {
         setLoading(false);
@@ -139,20 +118,15 @@ const McqSection: React.FC<McqSectionProps> = ({
 
   // Submit function - no longer shows correctness
   function handleSubmitClick() {
-    console.log("[MCQ] Direct submit button clicked");
-    console.log("[MCQ] Using studentId:", studentId);
-    console.log("[MCQ] Using assessmentId:", assessmentId);
-    console.log("[MCQ] Current answers:", answers);
-
     // Validate required data
     if (!studentId) {
-      console.error("[MCQ] Missing studentId for submission");
+      // Error handling without logging
       toast.error("Student ID is missing");
       return;
     }
 
     if (!assessmentId) {
-      console.error("[MCQ] Missing assessmentId for submission");
+      // Error handling without logging
       toast.error("Assessment ID is missing");
       return;
     }
@@ -162,10 +136,7 @@ const McqSection: React.FC<McqSectionProps> = ({
       (answer) => !answer.isSubmitted && answer.selectedChoiceId
     );
 
-    console.log("[MCQ] Unsaved answers to submit:", unsavedAnswers);
-
     if (unsavedAnswers.length === 0) {
-      console.log("[MCQ] No unsaved answers to submit");
       toast("No new answers to submit", {
         icon: "🔔",
         duration: 2000,
@@ -178,8 +149,6 @@ const McqSection: React.FC<McqSectionProps> = ({
 
     // Process each answer
     const submissionPromises = unsavedAnswers.map(async (answer) => {
-      console.log(`[MCQ] Submitting answer for problem ${answer.problemId}`);
-
       const response = await fetch("/api/submissions/mcq", {
         method: "POST",
         headers: {
@@ -194,11 +163,9 @@ const McqSection: React.FC<McqSectionProps> = ({
         }),
       });
 
-      console.log(`[MCQ] Response status: ${response.status}`);
-
       if (!response.ok) {
         const text = await response.text();
-        console.error("[MCQ] Error response:", text);
+        // Error handling without logging
         throw new Error(`Failed to submit: ${text}`);
       }
 
@@ -209,8 +176,6 @@ const McqSection: React.FC<McqSectionProps> = ({
 
     Promise.all(submissionPromises)
       .then((results) => {
-        console.log("[MCQ] All submissions completed:", results);
-
         // Update answers with submission results - only mark as submitted
         const updatedAnswers = { ...answers };
         results.forEach(({ problemId }) => {
@@ -227,8 +192,8 @@ const McqSection: React.FC<McqSectionProps> = ({
         setAnswers(updatedAnswers);
         toast.success(`Successfully submitted ${results.length} answers!`);
       })
-      .catch((error) => {
-        console.error("[MCQ] Submission process failed:", error);
+      .catch(() => {
+        // Error handling without logging
         toast.error("Failed to submit answers. Please try again.");
       })
       .finally(() => {
@@ -239,17 +204,15 @@ const McqSection: React.FC<McqSectionProps> = ({
 
   const handleAnswerSelect = useCallback(
     (problemId: string, choiceId: string) => {
-      console.log("[MCQ] Answer selected:", { problemId, choiceId });
-
       const problem = mcqProblems.find((p) => p.id === problemId);
       if (!problem) {
-        console.error("[MCQ] Problem not found:", problemId);
+        // Error handling without logging
         return;
       }
 
       const selectedChoice = problem.choices.find((c) => c.id === choiceId);
       if (!selectedChoice) {
-        console.error("[MCQ] Choice not found:", choiceId);
+        // Error handling without logging
         return;
       }
 
@@ -274,8 +237,6 @@ const McqSection: React.FC<McqSectionProps> = ({
         })
       );
 
-      console.log("[MCQ] Saved selection to localStorage:", localStorageKey);
-      console.log("[MCQ] Updating answers state:", updatedAnswers);
       setAnswers(updatedAnswers);
     },
     [mcqProblems, answers, assessmentId]

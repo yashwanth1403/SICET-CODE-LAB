@@ -18,12 +18,12 @@ export default async function McqPage({ params }: McqPageProps) {
   const session = await auth();
 
   if (!session?.user?.id) {
-    console.error("User is not authenticated");
+    // Error handling without logging
     redirect("/login");
   }
 
   if (!session?.user?.batch || !session?.user?.department) {
-    console.warn("Missing batch or department in session");
+    // Warning handling without logging
   }
 
   const initialData = await fetchAssessmentById(
@@ -34,7 +34,7 @@ export default async function McqPage({ params }: McqPageProps) {
 
   // If no assessment data, redirect to overview
   if (!initialData) {
-    console.log("[SERVER] No assessment data found");
+    // Handling without logging
     redirect(`/assessment/ongoing/${assessmentId}`);
   }
 
@@ -42,7 +42,7 @@ export default async function McqPage({ params }: McqPageProps) {
   const rawMcqProblems = initialData.problems.filter(
     (p) => p.questionType === "MULTIPLE_CHOICE"
   );
-  console.log(`[SERVER] Found ${rawMcqProblems.length} MCQ problems`);
+  // Info handling without logging
 
   // Map the data to match the expected McqProblem interface
   const mcqProblems = rawMcqProblems.map((problem) => ({
@@ -61,15 +61,13 @@ export default async function McqPage({ params }: McqPageProps) {
   mcqProblems.forEach((problem) => {
     // Check for problems without choices
     if (!problem.choices || problem.choices.length === 0) {
-      console.warn(
-        `[SERVER] WARNING: No choices found for MCQ problem ${problem.id} (${problem.question})`
-      );
+      // Warning handling without logging
     }
   });
 
   // If no MCQ problems, redirect to overview
   if (mcqProblems.length === 0) {
-    console.log("[SERVER] No MCQ problems found in this assessment");
+    // Info handling without logging
     redirect(`/assessment/ongoing/${assessmentId}`);
   }
 
