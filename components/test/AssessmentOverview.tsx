@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   User,
   Code,
@@ -10,13 +10,14 @@ import {
   Clock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAtom } from "jotai";
 import { useSession } from "next-auth/react";
 import {
   assessmentAtom,
   TestAssessmentType,
   TestProblem,
 } from "@/lib/store/atom/testAssessment";
+import { useAssessment } from "@/lib/store/context/AssessmentContext";
+import { useAtom } from "jotai";
 
 interface AssessmentOverviewProps {
   initialData: TestAssessmentType | null;
@@ -27,17 +28,22 @@ export const AssessmentOverview: React.FC<AssessmentOverviewProps> = ({
 }) => {
   const router = useRouter();
   const { data: session } = useSession();
-  const assessment = initialData;
-  const [atomAssessment, setAssessment] = useAtom(assessmentAtom);
+  const [assessment, setAssessment] = useAtom(assessmentAtom);
+  const initialized = useRef(false);
+
   // Add state for MCQ submissions
   const [mcqSubmissions, setMcqSubmissions] = useState<Record<string, boolean>>(
     {}
   );
   const [mcqSubmissionsLoaded, setMcqSubmissionsLoaded] = useState(false);
 
+  // Initialize assessment data only once when the component mounts
   useEffect(() => {
-    setAssessment(initialData);
-  }, [initialData, setAssessment]);
+    if (initialData && !initialized.current) {
+      setAssessment(initialData);
+      initialized.current = true;
+    }
+  }, []); // Empty dependency array to run only once on mount
 
   // Add a useEffect to fetch MCQ submissions
   useEffect(() => {
@@ -59,16 +65,12 @@ export const AssessmentOverview: React.FC<AssessmentOverviewProps> = ({
             });
             setMcqSubmissions(submissionsMap);
           }
-        } else {
-          console.error(
-            "Failed to fetch MCQ submissions:",
-            response.statusText
-          );
         }
+        // Error handling without logging
 
         setMcqSubmissionsLoaded(true);
-      } catch (error) {
-        console.error("Error fetching MCQ submissions:", error);
+      } catch {
+        // Error handling without logging
         setMcqSubmissionsLoaded(true);
       }
     };
@@ -108,26 +110,17 @@ export const AssessmentOverview: React.FC<AssessmentOverviewProps> = ({
                     new Date(problem.submission.lastSaved)))
             ) {
               updated = true;
-              console.log(
-                `Updated submission for problem ${problem.id} found in localStorage`
-              );
               return { ...problem, submission };
             }
           }
-        } catch (error) {
-          console.error(
-            `Error loading submission for problem ${problem.id}:`,
-            error
-          );
+        } catch {
+          // Error handling without logging
         }
         return problem;
       });
 
       // Only update the assessment atom if we found new submission data
       if (updated) {
-        console.log(
-          "Updating assessment with latest submissions from localStorage"
-        );
         setAssessment(updatedAssessment);
       }
     };
@@ -141,55 +134,6 @@ export const AssessmentOverview: React.FC<AssessmentOverviewProps> = ({
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
   }, [assessment?.id, setAssessment]);
-
-  // Original useEffect to monitor atom changes
-  useEffect(() => {
-    console.log("Atom Assessment Updated:", atomAssessment);
-  }, [atomAssessment]);
-
-  // Add debug function to inspect localStorage
-  useEffect(() => {
-    if (!assessment) return;
-
-    // Debug function to inspect localStorage
-    const debugLocalStorage = () => {
-      console.log("Debugging localStorage for assessment:", assessment.id);
-
-      assessment.problems.forEach((problem) => {
-        const storageKey = `assessment_code_${assessment.id}_${problem.id}`;
-        const savedData = localStorage.getItem(storageKey);
-
-        if (savedData) {
-          try {
-            const submission = JSON.parse(savedData);
-            console.log(`Problem ${problem.id}:`, {
-              status: submission.results?.status,
-              testsPassed: submission.results?.testsPassed,
-              totalTests: submission.results?.totalTests,
-              submittedAt: submission.results?.submittedAt,
-              lastSaved: submission.lastSaved,
-            });
-          } catch (error) {
-            console.error(
-              `Error parsing submission for problem ${problem.id}:`,
-              error
-            );
-          }
-        } else {
-          console.log(`No localStorage data for problem ${problem.id}`);
-        }
-      });
-    };
-
-    // Run debug initially
-    debugLocalStorage();
-
-    // Set up interval to continuously monitor localStorage
-    const intervalId = setInterval(debugLocalStorage, 5000);
-
-    // Clean up interval
-    return () => clearInterval(intervalId);
-  }, [assessment]);
 
   const navigateToProblem = (problemId: string) => {
     if (assessment) {
@@ -238,11 +182,8 @@ export const AssessmentOverview: React.FC<AssessmentOverviewProps> = ({
           status: submission.results?.status || null,
         };
       }
-    } catch (error) {
-      console.error(
-        `Error getting submission status for problem ${problemId}:`,
-        error
-      );
+    } catch {
+      // Error handling without logging
     }
 
     return null;

@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useAtom } from "jotai";
-import { assessmentAtom } from "@/lib/store/atom/testAssessment";
+import { useAssessment } from "@/lib/store/context/AssessmentContext";
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,7 +24,7 @@ const TestSidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
-  const [assessment] = useAtom(assessmentAtom);
+  const { assessment } = useAssessment();
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [progress, setProgress] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,6 +51,110 @@ const TestSidebar = () => {
 
   const currentProblemId = getCurrentProblemId();
 
+  // Function to clear localStorage data except attempt info
+  const clearLocalStorageExceptAttemptInfo = useCallback(
+    (assessmentId: string) => {
+      // Error handling without logging
+
+      try {
+        // Keep track of the attempt info key
+        const attemptInfoKey = `assessment_attempt_${assessmentId}`;
+
+        // Find all keys related to this assessment
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.includes(assessmentId) && key !== attemptInfoKey) {
+            keysToRemove.push(key);
+          }
+        }
+
+        // Remove the keys
+        // Error handling without logging
+        keysToRemove.forEach((key) => {
+          // Error handling without logging
+          localStorage.removeItem(key);
+        });
+
+        // Error handling without logging
+      } catch {
+        // Error handling without logging
+      }
+    },
+    []
+  );
+
+  // Handle test submission
+  const handleTestSubmission = useCallback(
+    async (isTimeExpired = false) => {
+      if (!assessment?.id || isSubmitting) return;
+
+      // Error handling without logging
+      setIsSubmitting(true);
+
+      try {
+        if (isTimeExpired) {
+          // Error handling without logging
+          alert("Time's up! Your assessment will be submitted automatically.");
+        }
+
+        // Submit the assessment via the API endpoint
+        const response = await fetch("/api/submissions/assessment", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            assessmentId: assessment.id,
+            isTimeExpired,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to submit assessment");
+        }
+
+        // Successfully submitted
+        await response.json();
+        // Error handling without logging
+
+        // Get attempt info from localStorage
+        const storedAttemptKey = `assessment_attempt_${assessment.id}`;
+        const storedAttempt = localStorage.getItem(storedAttemptKey);
+
+        if (storedAttempt) {
+          // Update localStorage with completion status
+          const attemptInfo = JSON.parse(storedAttempt);
+          const updatedAttemptInfo = {
+            ...attemptInfo,
+            isCompleted: true,
+            submittedAt: new Date().toISOString(),
+          };
+          localStorage.setItem(
+            storedAttemptKey,
+            JSON.stringify(updatedAttemptInfo)
+          );
+        }
+
+        // Clear localStorage except for the attempt info
+        clearLocalStorageExceptAttemptInfo(assessment.id);
+
+        // Navigate to the completion page
+        router.push(`/assessment/completed/${assessment.id}`);
+      } catch {
+        // Error handling without logging
+        alert(
+          "There was an error submitting your assessment. Please try again."
+        );
+      } finally {
+        setIsSubmitting(false);
+        setShowConfirmation(false);
+      }
+    },
+    [assessment?.id, isSubmitting, router, clearLocalStorageExceptAttemptInfo]
+  );
+
   // Initialize and update timer based on attempt data
   useEffect(() => {
     if (!assessment || !assessment.id) return;
@@ -71,7 +174,7 @@ const TestSidebar = () => {
     }
 
     if (!attemptInfo) {
-      console.warn("No attempt information found");
+      // Error handling without logging
       return;
     }
 
@@ -107,7 +210,7 @@ const TestSidebar = () => {
     const timer = setInterval(updateTimeRemaining, 1000);
 
     return () => clearInterval(timer);
-  }, [assessment]);
+  }, [assessment?.id, handleTestSubmission]);
 
   // Format time remaining as HH:MM:SS or MM:SS
   const formatTimeRemaining = () => {
@@ -126,106 +229,6 @@ const TestSidebar = () => {
   const navigateToProblem = (problemId: string) => {
     if (assessment) {
       router.push(`/assessment/ongoing/${assessment.id}/problem/${problemId}`);
-    }
-  };
-
-  // Handle test submission
-  const handleTestSubmission = async (isTimeExpired = false) => {
-    if (!assessment?.id || isSubmitting) return;
-
-    console.log("Starting assessment submission process...");
-    console.log("Assessment ID:", assessment.id);
-    console.log("Is time expired:", isTimeExpired);
-
-    setIsSubmitting(true);
-
-    try {
-      if (isTimeExpired) {
-        console.log("Time expired - auto-submitting assessment");
-        alert("Time's up! Your assessment will be submitted automatically.");
-      }
-
-      // Submit the assessment via the API endpoint
-      const response = await fetch("/api/submissions/assessment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          assessmentId: assessment.id,
-          isTimeExpired,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to submit assessment");
-      }
-
-      const result = await response.json();
-      console.log("Assessment submission result:", result);
-
-      // Get attempt info from localStorage
-      const storedAttemptKey = `assessment_attempt_${assessment.id}`;
-      const storedAttempt = localStorage.getItem(storedAttemptKey);
-
-      if (storedAttempt) {
-        // Update localStorage with completion status
-        const attemptInfo = JSON.parse(storedAttempt);
-        const updatedAttemptInfo = {
-          ...attemptInfo,
-          isCompleted: true,
-          submittedAt: new Date().toISOString(),
-        };
-        localStorage.setItem(
-          storedAttemptKey,
-          JSON.stringify(updatedAttemptInfo)
-        );
-      }
-
-      // Clear localStorage except for the attempt info
-      clearLocalStorageExceptAttemptInfo(assessment.id);
-
-      // Navigate to the completion page
-      router.push(`/assessment/completed/${assessment.id}`);
-    } catch (error) {
-      console.error("Error submitting assessment:", error);
-      alert("There was an error submitting your assessment. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-      setShowConfirmation(false);
-    }
-  };
-
-  // Function to clear localStorage data except attempt info
-  const clearLocalStorageExceptAttemptInfo = (assessmentId: string) => {
-    console.log("Clearing localStorage data for assessment:", assessmentId);
-
-    try {
-      // Keep track of the attempt info key
-      const attemptInfoKey = `assessment_attempt_${assessmentId}`;
-
-      // Find all keys related to this assessment
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.includes(assessmentId) && key !== attemptInfoKey) {
-          keysToRemove.push(key);
-        }
-      }
-
-      // Remove the keys
-      console.log(
-        `Removing ${keysToRemove.length} localStorage items for assessment ${assessmentId}`
-      );
-      keysToRemove.forEach((key) => {
-        console.log(`Removing localStorage item: ${key}`);
-        localStorage.removeItem(key);
-      });
-
-      console.log("Finished cleaning localStorage");
-    } catch (error) {
-      console.error("Error clearing localStorage:", error);
     }
   };
 
@@ -275,8 +278,8 @@ const TestSidebar = () => {
           }
         }
       }
-    } catch (error) {
-      console.error("Error getting submission status:", error);
+    } catch {
+      // Error handling without logging
     }
 
     switch (status) {
@@ -316,8 +319,8 @@ const TestSidebar = () => {
           }
         }
       }
-    } catch (error) {
-      console.error("Error getting MCQ submission status:", error);
+    } catch {
+      // Error handling without logging
     }
 
     switch (status) {

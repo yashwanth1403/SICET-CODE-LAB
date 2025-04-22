@@ -2,6 +2,7 @@
 import { auth } from "@/auth"; // Adjust the import path to your auth configuration
 import SidebarNavigation from "@/components/sidebarNavigation";
 import { redirect } from "next/navigation";
+import { AssessmentProvider } from "@/lib/store/context/AssessmentContext";
 
 export default async function DashboardLayout({
   children,
@@ -19,7 +20,9 @@ export default async function DashboardLayout({
   return (
     <div className="flex">
       <SidebarNavigation session={session} />
-      <main className="flex-1 bg-slate-900 min-h-screen">{children}</main>
+      <main className="flex-1 bg-slate-900 min-h-screen">
+        <AssessmentProvider>{children}</AssessmentProvider>
+      </main>
     </div>
   );
 }

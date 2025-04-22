@@ -2,11 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { submitSolution, finalizeAssessment } from "@/actions/CreateAssessment";
-import { useAtom } from "jotai";
-import {
-  assessmentAtom,
-  TestAssessmentType,
-} from "@/lib/store/atom/testAssessment";
+import { useAssessment } from "@/lib/store/context/AssessmentContext";
+import { TestAssessmentType } from "@/lib/store/atom/testAssessment";
 
 interface AssessmentProblemProps {
   studentId: string;
@@ -22,7 +19,7 @@ export const OngoingAssessment: React.FC<AssessmentProblemProps> = ({
   initialData,
 }) => {
   const router = useRouter();
-  const [assessment, setAssessment] = useAtom(assessmentAtom);
+  const { assessment, setAssessment } = useAssessment();
   const [code, setCode] = useState("");
   const [language, setLanguage] = useState("Python");
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
@@ -98,7 +95,7 @@ export const OngoingAssessment: React.FC<AssessmentProblemProps> = ({
         router.push(`/assessment/ongoing/${assessmentId}`);
       }, 1500);
     } catch (err) {
-      console.error("Submission error:", err);
+      // Error handling without logging
       setError(
         err instanceof Error
           ? err.message
@@ -123,7 +120,7 @@ export const OngoingAssessment: React.FC<AssessmentProblemProps> = ({
 
       router.push(`/assessment/completed/${assessmentId}`);
     } catch (err) {
-      console.error("Error finalizing assessment:", err);
+      // Error handling without logging
       setError(
         err instanceof Error ? err.message : "Failed to finalize assessment"
       );
@@ -134,7 +131,7 @@ export const OngoingAssessment: React.FC<AssessmentProblemProps> = ({
 
   // Function to clear localStorage data except attempt info
   const clearLocalStorageExceptAttemptInfo = (assessmentId: string) => {
-    console.log("Clearing localStorage data for assessment:", assessmentId);
+    // Error handling without logging
 
     try {
       // Keep track of the attempt info key
@@ -150,17 +147,15 @@ export const OngoingAssessment: React.FC<AssessmentProblemProps> = ({
       }
 
       // Remove the keys
-      console.log(
-        `Removing ${keysToRemove.length} localStorage items for assessment ${assessmentId}`
-      );
+      // Error handling without logging
       keysToRemove.forEach((key) => {
-        console.log(`Removing localStorage item: ${key}`);
+        // Error handling without logging
         localStorage.removeItem(key);
       });
 
-      console.log("Finished cleaning localStorage");
-    } catch (error) {
-      console.error("Error clearing localStorage:", error);
+      // Error handling without logging
+    } catch {
+      // Error handling without logging
     }
   };
 

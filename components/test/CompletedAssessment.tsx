@@ -1,8 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
-import { useAtom } from "jotai";
+import { useAssessment } from "@/lib/store/context/AssessmentContext";
 import {
-  assessmentAtom,
   TestAssessmentType,
   ProblemSubmission,
 } from "@/lib/store/atom/testAssessment";
@@ -76,7 +75,7 @@ export const CompletedAssessment: React.FC<CompletedAssessmentProps> = ({
   studentId,
   initialData,
 }) => {
-  const [assessment, setAssessment] = useAtom(assessmentAtom);
+  const { assessment, setAssessment } = useAssessment();
   const [submissions, setSubmissions] = useState<SubmissionResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalScore, setTotalScore] = useState(0);
@@ -151,7 +150,7 @@ export const CompletedAssessment: React.FC<CompletedAssessmentProps> = ({
             }
           }
         } catch (error) {
-          console.error("Error fetching attempt info:", error);
+          // Error handling without logging
         }
 
         // Calculate total score
@@ -159,8 +158,8 @@ export const CompletedAssessment: React.FC<CompletedAssessmentProps> = ({
         let possibleScore = 0;
 
         if (assessment) {
-          console.log("Calculating scores for assessment:", assessment.title);
-          console.log("Total problems:", assessment.problems.length);
+          // Error handling without logging
+          // Error handling without logging
 
           assessment.problems.forEach((problem) => {
             // Find the matching submission
@@ -177,40 +176,24 @@ export const CompletedAssessment: React.FC<CompletedAssessmentProps> = ({
               // For MCQ problems, check isCorrect flag
               if (problem.questionType === "MULTIPLE_CHOICE") {
                 earnedScore += submission.isCorrect ? problemScore : 0;
-                console.log(
-                  `MCQ Problem: ${problem.title}, Score: ${
-                    submission.isCorrect ? problemScore : 0
-                  }/${problemScore}`
-                );
+                // Error handling without logging
               }
               // For coding problems, use submission score
               else if (problem.questionType === "CODING") {
                 earnedScore += submission.score || 0;
-                console.log(
-                  `Coding Problem: ${problem.title}, Score: ${
-                    submission.score || 0
-                  }/${problemScore}`
-                );
+                // Error handling without logging
               }
             } else {
-              console.log(
-                `No submission for problem: ${problem.title}, Possible score: ${problemScore}`
-              );
+              // Error handling without logging
             }
           });
         }
 
-        console.log(
-          `Total score calculation: ${earnedScore}/${possibleScore} (${
-            possibleScore > 0 ? (earnedScore / possibleScore) * 100 : 0
-          }%)`
-        );
+        // Error handling without logging
 
         // If we have stats from the API, use those scores as they're more reliable
         if (responseData.stats && responseData.stats.totalScore !== undefined) {
-          console.log(
-            `Using server-calculated scores: ${responseData.stats.totalScore}/${responseData.stats.maxScore}`
-          );
+          // Error handling without logging
           setTotalScore(responseData.stats.totalScore);
           setMaxScore(responseData.stats.maxScore);
           setPercentage(
@@ -221,9 +204,7 @@ export const CompletedAssessment: React.FC<CompletedAssessmentProps> = ({
           );
         } else {
           // Fall back to client-side calculation
-          console.log(
-            `Using client-calculated scores: ${earnedScore}/${possibleScore}`
-          );
+          // Error handling without logging
           setTotalScore(earnedScore);
           setMaxScore(possibleScore);
           setPercentage(
@@ -231,7 +212,7 @@ export const CompletedAssessment: React.FC<CompletedAssessmentProps> = ({
           );
         }
       } catch (error) {
-        console.error("Error fetching submissions:", error);
+        // Error handling without logging
         // If API fails, we'll fall back to localStorage in another effect
       } finally {
         setIsLoading(false);

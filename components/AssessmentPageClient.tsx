@@ -3,11 +3,33 @@
 import { useState, useEffect } from "react";
 import { AssessmentOverview } from "@/components/test/AssessmentOverview";
 import { createAttemptTracker } from "@/actions/CreateAssessment";
-export default function AssessmentPageClient({ initialData, session }) {
+import { useAssessment } from "@/lib/store/context/AssessmentContext";
+import { TestAssessmentType } from "@/lib/store/atom/testAssessment";
+import { Session } from "next-auth";
+
+export default function AssessmentPageClient({
+  initialData,
+  session,
+}: {
+  initialData: TestAssessmentType;
+  session:
+    | (Session & { user: { id: string } })
+    | (Session & { user?: { id?: string } });
+}) {
   const [showConfirmation, setShowConfirmation] = useState(true);
-  const [assessment, setAssessment] = useState(initialData);
+  const { setAssessment } = useAssessment();
   const [isLoading, setIsLoading] = useState(false);
-  const [attemptData, setAttemptData] = useState(null);
+  const [attemptData, setAttemptData] = useState<{
+    startTime: string;
+    endTime: string;
+    duration: number;
+    attemptId: string;
+  } | null>(null);
+
+  // Initialize assessment atom with initial data
+  useEffect(() => {
+    setAssessment(initialData);
+  }, [initialData, setAssessment]);
 
   // Check for existing attempt in localStorage on component mount
   useEffect(() => {
@@ -29,7 +51,7 @@ export default function AssessmentPageClient({ initialData, session }) {
     try {
       // Create attempt tracker when user confirms
       const result = await createAttemptTracker(
-        session.user.id,
+        session.user.id as string,
         initialData.id,
         initialData.duration
       );
@@ -38,8 +60,6 @@ export default function AssessmentPageClient({ initialData, session }) {
         // Store attempt data in localStorage
         const now = result.data?.startTime;
         const endTime = result.data?.endTime; // Convert minutes to milliseconds
-
-        console.log(now, endTime);
 
         const attemptInfo = {
           startTime: now.toISOString(),
@@ -83,11 +103,11 @@ export default function AssessmentPageClient({ initialData, session }) {
           // Skip confirmation since there's an existing attempt
           setShowConfirmation(false);
         } else {
-          console.error("Failed to start assessment:", result.error);
+          // Error handling without logging
         }
       }
-    } catch (error) {
-      console.error("Error starting assessment:", error);
+    } catch {
+      // Error handling without logging
     } finally {
       setIsLoading(false);
     }
@@ -150,10 +170,9 @@ export default function AssessmentPageClient({ initialData, session }) {
         </div>
       ) : (
         <AssessmentOverview
-          id={initialData.id}
           initialData={{
             ...initialData,
-            attemptData: attemptData,
+            attemptData: attemptData || undefined,
           }}
         />
       )}
