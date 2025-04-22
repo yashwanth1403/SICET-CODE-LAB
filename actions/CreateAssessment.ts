@@ -906,15 +906,28 @@ export async function finalizeAssessment(
       },
     });
 
-    if (!attemptTracker) {
-      throw new Error("Attempt tracker not found");
+    // Calculate duration in minutes
+    let startTime: Date;
+    let durationMinutes: number;
+
+    if (attemptTracker) {
+      console.log("Using attempt tracker for time calculation");
+      startTime = new Date(attemptTracker.startTime);
+      const endTime =
+        isTimeExpired && attemptTracker.endTime
+          ? new Date(attemptTracker.endTime)
+          : new Date();
+      const durationMs = endTime.getTime() - startTime.getTime();
+      durationMinutes = Math.round(durationMs / (1000 * 60));
+    } else {
+      console.log("No attempt tracker found, using assessment duration");
+      // If no attempt tracker, use the assessment's configured duration
+      startTime = new Date();
+      startTime.setMinutes(startTime.getMinutes() - assessment.duration);
+      durationMinutes = assessment.duration;
     }
 
-    // Calculate duration in minutes
-    const startTime = new Date(attemptTracker.startTime);
-    const endTime = new Date();
-    const durationMs = endTime.getTime() - startTime.getTime();
-    const durationMinutes = Math.round(durationMs / (1000 * 60));
+    console.log(`Calculated duration: ${durationMinutes} minutes`);
 
     // Calculate average time per problem for completed problems
     const averageTimePerProblem =
@@ -939,20 +952,37 @@ export async function finalizeAssessment(
 
     console.log("Calculated statistics:", submissionDetails);
 
-    // Update attempt tracker
+    // Update attempt tracker or create one if it doesn't exist
     console.log("Updating attempt tracker...");
-    const updatedAttempt = await prisma.attemptTracker.update({
-      where: {
-        studentId_assessmentId: {
+    let updatedAttempt;
+
+    if (attemptTracker) {
+      updatedAttempt = await prisma.attemptTracker.update({
+        where: {
+          studentId_assessmentId: {
+            studentId,
+            assessmentId,
+          },
+        },
+        data: {
+          isCompleted: true,
+          endTime: new Date(),
+        },
+      });
+      console.log("Existing attempt tracker updated");
+    } else {
+      // Create a new attempt tracker with retrospective start time
+      updatedAttempt = await prisma.attemptTracker.create({
+        data: {
           studentId,
           assessmentId,
+          startTime: startTime,
+          endTime: new Date(),
+          isCompleted: true,
         },
-      },
-      data: {
-        isCompleted: true,
-        endTime: new Date(),
-      },
-    });
+      });
+      console.log("New attempt tracker created retrospectively");
+    }
 
     console.log("Attempt tracker updated:", updatedAttempt);
 
@@ -998,7 +1028,11 @@ export async function finalizeAssessment(
       },
     });
 
-    console.log("Assessment submission updated:", updatedSubmission);
+    console.log(
+      "Assessment submission updated with duration:",
+      durationMinutes,
+      "minutes"
+    );
 
     console.log("Assessment finalized successfully");
     return {

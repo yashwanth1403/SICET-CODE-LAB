@@ -106,14 +106,52 @@ export async function POST(req: Request) {
     });
 
     if (!attemptExists) {
-      console.log("No attempt found for:", { studentId, assessmentId });
-      return NextResponse.json(
-        { error: "No attempt found for this assessment" },
-        { status: 404 }
+      console.log("No attempt found, creating one now for:", {
+        studentId,
+        assessmentId,
+      });
+
+      // Get assessment details to calculate endTime properly
+      const assessment = await prisma.assessments.findUnique({
+        where: { id: assessmentId },
+        select: { duration: true },
+      });
+
+      if (!assessment) {
+        return NextResponse.json(
+          { error: "Assessment not found" },
+          { status: 404 }
+        );
+      }
+
+      // Create an attempt tracker record with the current time
+      const now = new Date();
+      const endTime = new Date(
+        now.getTime() + (assessment.duration || 120) * 60000
       );
+
+      try {
+        await prisma.attemptTracker.create({
+          data: {
+            studentId,
+            assessmentId,
+            startTime: now,
+            endTime: endTime,
+            isCompleted: false,
+          },
+        });
+
+        console.log("Created new attempt tracker for submission");
+      } catch (error) {
+        console.error("Error creating attempt tracker:", error);
+        return NextResponse.json(
+          { error: "Failed to create attempt record" },
+          { status: 500 }
+        );
+      }
     }
 
-    console.log("Attempt exists, proceeding with finalization");
+    console.log("Attempt exists or was created, proceeding with finalization");
 
     // Process the assessment submission using the server action
     const result = await finalizeAssessment(
