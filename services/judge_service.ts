@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { LANGUAGE_IDS, STATUS_CODES } from "@/utils/contants";
 
 // Configure your Judge0 self-hosted instance URL
-const JUDGE0_API_URL = process.env.NEXT_PUBLIC_JUDGE0_API_URLL;
+const JUDGE0_API_URL = process.env.NEXT_PUBLIC_JUDGE0_API_URL;
 
 interface JudgeSubmissionResult {
   status: {
