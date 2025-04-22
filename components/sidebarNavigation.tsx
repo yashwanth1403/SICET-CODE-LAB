@@ -15,11 +15,33 @@ import {
   LogOut,
   Terminal,
 } from "lucide-react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { Session } from "next-auth";
+import { signOut } from "next-auth/react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-const SidebarNavigation = ({ session, isLoading = false }) => {
+interface SidebarNavigationProps {
+  session: Session | null;
+  isLoading?: boolean;
+}
+
+const SidebarNavigation = ({
+  session,
+  isLoading = false,
+}: SidebarNavigationProps) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const router = useRouter();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const navItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
@@ -31,7 +53,11 @@ const SidebarNavigation = ({ session, isLoading = false }) => {
   ];
 
   const handleNavClick = (href: string) => {
-    redirect(href);
+    router.push(href);
+  };
+
+  const handleLogout = async () => {
+    await signOut({ redirect: true, callbackUrl: "/login" });
   };
 
   return (
@@ -189,6 +215,7 @@ const SidebarNavigation = ({ session, isLoading = false }) => {
             </Button>
             <Button
               variant="ghost"
+              onClick={() => setShowLogoutDialog(true)}
               className={`
                 w-full flex items-center
                 ${
@@ -196,17 +223,20 @@ const SidebarNavigation = ({ session, isLoading = false }) => {
                     ? "justify-center h-12"
                     : "justify-start px-4 h-10"
                 }
-                text-slate-400 hover:text-slate-700
-                hover:bg-gradient-to-r hover:from-emerald-500/10 hover:to-cyan-500/10
+                text-slate-400 
+                hover:text-red-400
+                hover:bg-red-900/10
+                border border-transparent hover:border-red-900/30
                 rounded-lg
                 group
+                transition-all duration-200
               `}
             >
               <LogOut
                 className={`
                 h-5 w-5 
                 ${!isCollapsed && "mr-3"}
-                group-hover:text-cyan-700
+                group-hover:text-red-500
                 transition-colors duration-200
               `}
               />
@@ -223,6 +253,31 @@ const SidebarNavigation = ({ session, isLoading = false }) => {
           bg-slate-900 min-h-screen
         `}
       ></div>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700 text-slate-200">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-100">
+              Confirm Logout
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to log out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600 hover:text-slate-100">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+            >
+              Log out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
