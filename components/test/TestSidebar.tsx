@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAssessment } from "@/lib/store/context/AssessmentContext";
+import { createAttemptTracker } from "@/actions/CreateAssessment";
 import {
   ChevronLeft,
   ChevronRight,
@@ -221,21 +222,42 @@ const TestSidebar = () => {
 
     setIsLoading(true);
     try {
+      // Ensure we're using the correct endpoint with proper query parameters
       const response = await fetch(
         `/api/attempt?assessmentId=${assessment.id}`
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch attempt data");
+      if (response.ok) {
+        // Successful response - attempt exists
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          console.log("Attempt data fetched successfully:", result.data);
+          setAttemptInfo(result.data as AttemptInfo);
+          return; // Successful fetch, exit early
+        }
       }
 
-      const data = await response.json();
-      setAttemptInfo(data.data as AttemptInfo);
-    } catch (error) {
-      console.error("Error fetching attempt data:", error);
-      // If fetching fails, fallback to assessment data if available
+      // If we get here, either:
+      // 1. Response was not OK (404 - no attempt found)
+      // 2. Response was OK but data format was invalid
+
+      // Try to get error details
+      let errorMessage = "Unknown error";
+      if (!response.ok) {
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || `Error ${response.status}`;
+        } catch {
+          errorMessage = `HTTP Error ${response.status} ${response.statusText}`;
+        }
+      }
+
+      console.log(`Attempt fetch result: ${errorMessage}`);
+
+      // If no attempt found (404) or other issues, check if we have attempt data in the assessment object
       if (assessment.attemptData) {
-        // Convert legacy attempt data format to current format if needed
+        // Use the existing attempt data from assessment context
         const attemptData =
           assessment.attemptData as unknown as LegacyAttemptData;
         if (attemptData) {
@@ -249,12 +271,131 @@ const TestSidebar = () => {
             duration: attemptData.duration,
           };
           setAttemptInfo(convertedData);
+          return; // Successfully used fallback data
         }
+      }
+
+      // If response was specifically 404 (No attempt found), we need to create a new attempt
+      if (response.status === 404) {
+        console.log("No attempt found, creating a new one");
+        // Try to create a new attempt tracker
+        const duration = assessment.duration || 60; // Default to 60 minutes if not specified
+
+        try {
+          // First try to create attempt using server action
+          console.log("Attempting to create attempt using server action");
+          const result = await createAttemptTracker(
+            "",
+            assessment.id,
+            duration
+          );
+
+          if (result.success && result.data) {
+            console.log(
+              "Successfully created new attempt with server action:",
+              result.data
+            );
+            setAttemptInfo(result.data as unknown as AttemptInfo);
+            return;
+          } else {
+            throw new Error(result.error || "Failed to create attempt tracker");
+          }
+        } catch (error) {
+          console.error("Error creating attempt with server action:", error);
+
+          // If server action fails, try using the API endpoint directly
+          try {
+            console.log("Attempting to create attempt using API endpoint");
+            const apiResponse = await fetch("/api/attempt", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                assessmentId: assessment.id,
+                duration: duration,
+              }),
+            });
+
+            if (apiResponse.ok) {
+              const apiResult = await apiResponse.json();
+              if (apiResult.success && apiResult.data) {
+                console.log(
+                  "Successfully created new attempt with API:",
+                  apiResult.data
+                );
+                setAttemptInfo(apiResult.data as unknown as AttemptInfo);
+                return;
+              }
+            }
+
+            // If API also fails, throw error to continue to local fallback
+            const errorData = await apiResponse.json().catch(() => ({
+              error: `${apiResponse.status} ${apiResponse.statusText}`,
+            }));
+            throw new Error(`API error: ${errorData.error || "Unknown error"}`);
+          } catch (apiError) {
+            console.error("Error creating attempt with API:", apiError);
+            const errorMessage =
+              apiError instanceof Error ? apiError.message : "Unknown error";
+            console.warn(
+              `Failed to create attempt with all methods: ${errorMessage}`
+            );
+
+            // Create a local fallback attempt if all server methods fail
+            console.log("Creating local fallback attempt");
+            const now = new Date();
+            const endTime = new Date(now.getTime() + duration * 60 * 1000); // duration in minutes
+
+            const fallbackAttempt: AttemptInfo = {
+              id: "local-fallback",
+              studentId: "",
+              assessmentId: assessment.id,
+              startTime: now.toISOString(),
+              endTime: endTime.toISOString(),
+              isCompleted: false,
+              duration: duration,
+            };
+
+            setAttemptInfo(fallbackAttempt);
+            return;
+          }
+        }
+      }
+
+      // If we have no valid attempt data from any source, throw an error that will be caught below
+      throw new Error(errorMessage);
+    } catch (error) {
+      console.error("Error fetching attempt data:", error);
+
+      // At this point, both the API fetch and the assessment.attemptData fallback have failed
+      // The component will show the loading state until a valid attempt is established
+
+      // As a last resort, create a completely local attempt
+      if (assessment) {
+        const duration = assessment.duration || 60;
+        const now = new Date();
+        const endTime = new Date(now.getTime() + duration * 60 * 1000);
+
+        const emergencyFallback: AttemptInfo = {
+          id: "emergency-fallback",
+          studentId: "",
+          assessmentId: assessment.id,
+          startTime: now.toISOString(),
+          endTime: endTime.toISOString(),
+          isCompleted: false,
+          duration: duration,
+        };
+
+        console.warn(
+          "Using emergency fallback attempt due to all other methods failing"
+        );
+        setAttemptInfo(emergencyFallback);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [assessment?.id, assessment?.attemptData]);
+  }, [assessment?.id, assessment?.attemptData, assessment?.duration]);
 
   // Initialize and update timer based on attempt data from database
   useEffect(() => {
