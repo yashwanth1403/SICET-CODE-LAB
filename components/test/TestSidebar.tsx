@@ -20,6 +20,25 @@ import {
   X,
 } from "lucide-react";
 
+// Type for attempt information
+type AttemptInfo = {
+  id: string;
+  studentId: string;
+  assessmentId: string;
+  startTime: string; // ISO date string
+  endTime?: string; // ISO date string (optional)
+  isCompleted: boolean;
+  duration?: number; // in minutes
+};
+
+// Type for legacy attempt data that might come from assessment.attemptData
+type LegacyAttemptData = {
+  startTime: string;
+  endTime: string;
+  duration: number;
+  attemptId: string;
+};
+
 const TestSidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
@@ -30,6 +49,8 @@ const TestSidebar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [attemptInfo, setAttemptInfo] = useState<AttemptInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Redirect to assessment overview if assessment is null
   useEffect(() => {
@@ -161,27 +182,6 @@ const TestSidebar = () => {
         const result = await response.json();
         console.log("Assessment submitted successfully:", result);
 
-        // Get attempt info from localStorage
-        const storedAttemptKey = `assessment_attempt_${assessment.id}`;
-        const storedAttempt = localStorage.getItem(storedAttemptKey);
-
-        if (storedAttempt) {
-          // Update localStorage with completion status
-          const attemptInfo = JSON.parse(storedAttempt);
-          const updatedAttemptInfo = {
-            ...attemptInfo,
-            isCompleted: true,
-            submittedAt: new Date().toISOString(),
-            submissionId: result.data?.id || null,
-            score: result.data?.totalScore || 0,
-            maxScore: result.data?.maxScore || 0,
-          };
-          localStorage.setItem(
-            storedAttemptKey,
-            JSON.stringify(updatedAttemptInfo)
-          );
-        }
-
         // Clear localStorage except for the attempt info
         clearLocalStorageExceptAttemptInfo(assessment.id);
 
@@ -200,24 +200,6 @@ const TestSidebar = () => {
             // Make one final attempt to save all data
             saveAllUnfinishedWork();
 
-            // Even if the main submission failed, update local storage
-            const storedAttemptKey = `assessment_attempt_${assessment.id}`;
-            const storedAttempt = localStorage.getItem(storedAttemptKey);
-
-            if (storedAttempt) {
-              const attemptInfo = JSON.parse(storedAttempt);
-              const updatedAttemptInfo = {
-                ...attemptInfo,
-                isCompleted: true,
-                submittedAt: new Date().toISOString(),
-                wasError: true,
-              };
-              localStorage.setItem(
-                storedAttemptKey,
-                JSON.stringify(updatedAttemptInfo)
-              );
-            }
-
             // Still try to navigate away
             router.push(`/assessment/completed/${assessment.id}`);
           } catch {
@@ -233,27 +215,58 @@ const TestSidebar = () => {
     [assessment, isSubmitting, router, clearLocalStorageExceptAttemptInfo]
   );
 
-  // Initialize and update timer based on attempt data
+  // Fetch attempt data directly from the database
+  const fetchAttemptData = useCallback(async () => {
+    if (!assessment?.id) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/attempt?assessmentId=${assessment.id}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch attempt data");
+      }
+
+      const data = await response.json();
+      setAttemptInfo(data.data as AttemptInfo);
+    } catch (error) {
+      console.error("Error fetching attempt data:", error);
+      // If fetching fails, fallback to assessment data if available
+      if (assessment.attemptData) {
+        // Convert legacy attempt data format to current format if needed
+        const attemptData =
+          assessment.attemptData as unknown as LegacyAttemptData;
+        if (attemptData) {
+          const convertedData: AttemptInfo = {
+            id: attemptData.attemptId || "legacy",
+            studentId: "", // Will be filled by API when needed
+            assessmentId: assessment.id,
+            startTime: attemptData.startTime,
+            endTime: attemptData.endTime,
+            isCompleted: false, // Default to false for legacy data
+            duration: attemptData.duration,
+          };
+          setAttemptInfo(convertedData);
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [assessment?.id, assessment?.attemptData]);
+
+  // Initialize and update timer based on attempt data from database
   useEffect(() => {
     if (!assessment || !assessment.id) return;
 
-    // Try to get attempt data from localStorage first
-    const storedAttemptKey = `assessment_attempt_${assessment.id}`;
-    let attemptInfo = null;
+    // Fetch attempt data when component mounts
+    fetchAttemptData();
+  }, [assessment, fetchAttemptData]);
 
-    // Check if we have attemptData directly from assessment or need to get from localStorage
-    if (assessment.attemptData) {
-      attemptInfo = assessment.attemptData;
-    } else {
-      const storedAttempt = localStorage.getItem(storedAttemptKey);
-      if (storedAttempt) {
-        attemptInfo = JSON.parse(storedAttempt);
-      }
-    }
-
-    if (!attemptInfo) {
-      return;
-    }
+  // Set up timer based on attempt data
+  useEffect(() => {
+    if (!attemptInfo || isLoading || !assessment) return;
 
     // Flag to prevent multiple auto-submissions
     let hasTriggeredAutoSubmit = false;
@@ -261,17 +274,18 @@ const TestSidebar = () => {
     // Calculate time remaining
     const updateTimeRemaining = () => {
       const now = new Date();
-      const endTime = new Date(attemptInfo.endTime);
-      const totalDuration = attemptInfo.duration * 60; // in seconds
+      const endTime = new Date(attemptInfo.endTime || "");
+      const startTime = new Date(attemptInfo.startTime);
+      const totalDuration = assessment.duration || attemptInfo.duration || 0; // in minutes
+      const totalDurationSeconds = totalDuration * 60; // in seconds
 
       // Calculate remaining time in seconds
       const remainingMs = endTime.getTime() - now.getTime();
       const remainingSecs = Math.max(0, Math.floor(remainingMs / 1000));
 
       // Calculate elapsed percentage
-      const elapsedMs =
-        now.getTime() - new Date(attemptInfo.startTime).getTime();
-      const totalMs = totalDuration * 1000;
+      const elapsedMs = now.getTime() - startTime.getTime();
+      const totalMs = totalDurationSeconds * 1000;
       const elapsedPercentage = Math.min(100, (elapsedMs / totalMs) * 100);
 
       setTimeRemaining(remainingSecs);
@@ -316,8 +330,10 @@ const TestSidebar = () => {
 
     // Emergency auto-submit function (backup if first submission fails)
     const emergencyAutoSubmit = () => {
+      if (!assessment) return;
+
       const now = new Date();
-      const endTime = new Date(attemptInfo.endTime);
+      const endTime = new Date(attemptInfo.endTime || "");
 
       // Check if we're at least 5 seconds past the end time
       if (now.getTime() > endTime.getTime() + 5000) {
@@ -326,16 +342,8 @@ const TestSidebar = () => {
           `assessment_timed_out_${assessment.id}`
         );
 
-        // Check if we have a completion indicator
-        const storedAttempt = localStorage.getItem(storedAttemptKey);
-        let isCompleted = false;
-
-        if (storedAttempt) {
-          try {
-            const attemptData = JSON.parse(storedAttempt);
-            isCompleted = !!attemptData.isCompleted;
-          } catch {}
-        }
+        // Check for completion status from the attempt data
+        const isCompleted = attemptInfo.isCompleted;
 
         // If timed out but not completed, try submission again
         if (hasTimedOut && !isCompleted && !hasTriggeredAutoSubmit) {
@@ -353,7 +361,7 @@ const TestSidebar = () => {
       clearInterval(timer);
       clearInterval(emergencyTimer);
     };
-  }, [assessment, handleTestSubmission]);
+  }, [assessment, handleTestSubmission, attemptInfo, isLoading]);
 
   // Format time remaining as HH:MM:SS or MM:SS
   const formatTimeRemaining = () => {
@@ -504,7 +512,8 @@ const TestSidebar = () => {
         problem.title.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [];
 
-  if (!assessment) {
+  // Handle loading state
+  if (!assessment || isLoading) {
     return (
       <div className="fixed top-0 left-0 w-16 h-screen bg-[#0d1424] border-r border-gray-800 z-10">
         <div className="w-full h-full flex flex-col items-center justify-center">
