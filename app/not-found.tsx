@@ -55,7 +55,7 @@ export default function NotFound() {
   }, []);
 
   const errorCodes = [
-    "ERR_PAGE_NOT_FOUND",
+    "ERR_PAGE_NOT_Found",
     "SEGMENTATION_FAULT",
     "ERRNO_404",
     "NULL_POINTER_EXCEPTION",
